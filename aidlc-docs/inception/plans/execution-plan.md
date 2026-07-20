@@ -1,29 +1,26 @@
-# Plano de Execução
+# Plano de Execução — Lab FastAPI + Fargate + Terraform
 
 ## Resumo da Análise Detalhada
 
-### Escopo da Transformação
-- **Tipo**: Documentação (greenfield — sem código de aplicação)
-- **Alteração principal**: Criar `README.md` na raiz com guia completo de setup do AI-DLC no Cursor
-- **Componentes relacionados**: Nenhum (apenas documentação e artefatos em `aidlc-docs/`)
+### Escopo
+- **Tipo**: Greenfield de aplicação + IaC (workspace já tem AI-DLC e policy IAM de estudo)
+- **Alteração principal**: App Hello World, container, ECR, rede mínima, ECS/Fargate (1 task via Service), scripts e README didático
+- **Prefixo AWS**: `hello-fargate` · **Região**: `us-east-1`
 
 ### Avaliação de Impacto
-- **Mudanças voltadas ao usuário**: Sim — desenvolvedores usarão o README para instalar o AI-DLC
-- **Mudanças estruturais**: Não
-- **Mudanças de modelo de dados**: Não
-- **Mudanças de API**: Não
-- **Impacto de NFR**: Baixo — precisão e usabilidade do documento (RNF-1 a RNF-4)
+- **User-facing**: Sim — HTTP público na porta 8000 (estudo)
+- **Estrutural**: Sim — novos diretórios `app/`, `infra/`, `scripts/`
+- **Modelo de dados**: Não
+- **API**: Sim — `GET /` e `GET /health`
+- **NFR**: Sim — custo, didática, logs, resiliência (Low), destroy obrigatório
 
-### Relacionamentos de Componentes
-- Não aplicável (sem código de aplicação)
-
-### Avaliação de Risco
-- **Nível de risco**: Baixo
-- **Complexidade de rollback**: Fácil (remover/editar `README.md`)
-- **Complexidade de testes**: Simples (revisão manual / checklist)
+### Risco
+- **Nível**: Médio (conta AWS real, IP público, custo se esquecer destroy)
+- **Rollback**: Fácil — `terraform destroy` + re-push
+- **Testes**: Simples (curl + checklist)
 
 ### Idioma
-- Todos os artefatos deste fluxo em **português (pt-BR)**, inclusive `aidlc-docs/` e o `README.md`
+- Português (pt-BR) em docs, comentários Terraform e `aidlc-docs/`
 
 ## Visualização do Workflow
 
@@ -31,7 +28,7 @@
 
 ```mermaid
 flowchart TD
-    Start(["Pedido do Usuario"])
+    Start(["Pedido Lab Fargate"])
 
     subgraph INCEPTION["INCEPTION"]
         WD["Workspace Detection<br/>COMPLETED"]
@@ -39,15 +36,15 @@ flowchart TD
         RA["Requirements Analysis<br/>COMPLETED"]
         US["User Stories<br/>SKIP"]
         WP["Workflow Planning<br/>IN_PROGRESS"]
-        AD["Application Design<br/>SKIP"]
-        UG["Units Generation<br/>SKIP"]
+        AD["Application Design<br/>EXECUTE"]
+        UG["Units Generation<br/>EXECUTE"]
     end
 
     subgraph CONSTRUCTION["CONSTRUCTION"]
-        FD["Functional Design<br/>SKIP"]
-        NFRA["NFR Requirements<br/>SKIP"]
-        NFRD["NFR Design<br/>SKIP"]
-        ID["Infrastructure Design<br/>SKIP"]
+        FD["Functional Design<br/>EXECUTE_MINIMAL"]
+        NFRA["NFR Requirements<br/>EXECUTE"]
+        NFRD["NFR Design<br/>EXECUTE"]
+        ID["Infrastructure Design<br/>EXECUTE"]
         CG["Code Generation<br/>EXECUTE"]
         BT["Build and Test<br/>EXECUTE"]
     end
@@ -59,23 +56,29 @@ flowchart TD
     Start --> WD
     WD --> RA
     RA --> WP
-    WP --> CG
+    WP --> AD
+    AD --> UG
+    UG --> FD
+    FD --> NFRA
+    NFRA --> NFRD
+    NFRD --> ID
+    ID --> CG
     CG --> BT
     BT --> EndNode(["Concluido"])
 
     style WD fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
     style RA fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
     style WP fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
+    style AD fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
+    style UG fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
+    style FD fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
+    style NFRA fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
+    style NFRD fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
+    style ID fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
     style CG fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
     style BT fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
     style RE fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
     style US fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style AD fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style UG fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style FD fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style NFRA fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style NFRD fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style ID fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
     style OPS fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
     style Start fill:#CE93D8,stroke:#6A1B9A,stroke-width:3px,color:#000
     style EndNode fill:#CE93D8,stroke:#6A1B9A,stroke-width:3px,color:#000
@@ -89,84 +92,79 @@ flowchart TD
 ### Alternativa em texto
 
 ```
-Pedido do Usuario
+Pedido
   -> Workspace Detection (COMPLETED)
   -> Reverse Engineering (SKIP)
   -> Requirements Analysis (COMPLETED)
   -> User Stories (SKIP)
   -> Workflow Planning (IN_PROGRESS)
-  -> Application Design (SKIP)
-  -> Units Generation (SKIP)
-  -> Functional Design (SKIP)
-  -> NFR Requirements (SKIP)
-  -> NFR Design (SKIP)
-  -> Infrastructure Design (SKIP)
-  -> Code Generation (EXECUTE)
+  -> Application Design (EXECUTE)
+  -> Units Generation (EXECUTE)
+  -> Functional Design (EXECUTE minimal, por unidade)
+  -> NFR Requirements (EXECUTE)
+  -> NFR Design (EXECUTE)
+  -> Infrastructure Design (EXECUTE)
+  -> Code Generation (EXECUTE, por unidade)
   -> Build and Test (EXECUTE)
   -> Operations (PLACEHOLDER)
   -> Concluido
 ```
 
-## Fases a Executar
+## Fases a Executar / Pular
 
 ### INCEPTION
-- [x] Workspace Detection (CONCLUÍDO)
-- [x] Reverse Engineering (PULADO — greenfield / sem código de aplicação)
-  - **Justificativa**: Não há codebase de aplicação para analisar
-- [x] Requirements Analysis (CONCLUÍDO)
-- [x] User Stories (PULADO — documentação sem impacto de fluxo de usuário de produto)
-  - **Justificativa**: Entregável é README de setup; sem personas/jornadas de produto
-- [x] Workflow Planning (EM ANDAMENTO — aguardando aprovação)
-- [ ] Application Design — PULAR
-  - **Justificativa**: Nenhum componente/serviço novo; apenas arquivo Markdown
-- [ ] Units Generation — PULAR
-  - **Justificativa**: Uma única unidade simples (`readme-ai-dlc-setup`); sem decomposição
+- [x] Workspace Detection — CONCLUÍDO
+- [x] Reverse Engineering — PULADO (sem codebase de app)
+- [x] Requirements Analysis — CONCLUÍDO / APROVADO
+- [ ] User Stories — **PULAR**
+  - **Justificativa**: Lab técnico individual; critério de sucesso já é o acceptance criteria; sem múltiplas personas
+- [ ] Workflow Planning — EM ANDAMENTO (este documento)
+- [ ] Application Design — **EXECUTAR**
+  - **Justificativa**: Novos componentes (API, container, scripts, módulos Terraform) e dependências a esclarecer
+- [ ] Units Generation — **EXECUTAR**
+  - **Justificativa**: Decomposição em unidades `app`, `infra`, `tooling-docs`
 
-### CONSTRUCTION
-- [ ] Functional Design — PULAR
-  - **Justificativa**: Sem modelos de dados ou regras de negócio complexas
-- [ ] NFR Requirements — PULAR
-  - **Justificativa**: NFRs já capturados nos requisitos; sem seleção de stack
-- [ ] NFR Design — PULAR
-  - **Justificativa**: NFR Requirements pulado; sem padrões de NFR a projetar
-- [ ] Infrastructure Design — PULAR
-  - **Justificativa**: Sem mudanças de infraestrutura/cloud
-- [ ] Code Generation — EXECUTAR (SEMPRE)
-  - **Justificativa**: Gerar `README.md` + resumo em `aidlc-docs/construction/.../code/`
-  - **Unidade**: `readme-ai-dlc-setup`
-- [ ] Build and Test — EXECUTAR (SEMPRE)
-  - **Justificativa**: Instruções de verificação/checklist do README
+### CONSTRUCTION (por unidade, na ordem abaixo)
+- [ ] Functional Design — **EXECUTAR (mínimo)** na unidade `app`; N/A ou mínimo nas demais
+- [ ] NFR Requirements — **EXECUTAR** (custo, logs, resiliência Low, destroy)
+- [ ] NFR Design — **EXECUTAR** (padrões mínimos alinhados às decisões Resiliency)
+- [ ] Infrastructure Design — **EXECUTAR** (mapeamento VPC/ECR/IAM/ECS → recursos Terraform)
+- [ ] Code Generation — **EXECUTAR** (sempre)
+- [ ] Build and Test — **EXECUTAR** (sempre) — instruções locais + checklist AWS
 
 ### OPERATIONS
-- [ ] Operations — PLACEHOLDER
-  - **Justificativa**: Etapa futura; não aplicável agora
+- [ ] Operations — PLACEHOLDER (destroy/checklist ficam no README + Build and Test)
 
-## Unidade de Trabalho
-| Unidade | Descrição | Entregável |
-|---|---|---|
-| `readme-ai-dlc-setup` | README de pré-requisitos e setup do AI-DLC no Cursor | `README.md` (raiz) |
+## Unidades propostas (para Units Generation)
 
-## Sequência de Pacotes
-- Não aplicável (greenfield sem módulos de aplicação)
+| Ordem (geração) | Unidade | Conteúdo | Depende de |
+|---|---|---|---|
+| 1 | `hello-infra` | Terraform em `infra/` (network, ecr, iam, ecs, variables, outputs) | — |
+| 2 | `hello-app` | FastAPI, `requirements.txt`, Dockerfile | Alinhamento com task/porta/tag |
+| 3 | `hello-tooling-docs` | `scripts/`, `docs/` (policy IAM), README, `.gitignore` | Outputs da infra + contexto da app |
 
-## Linha do Tempo Estimada
-- **Etapas restantes a executar**: 2 (Code Generation, Build and Test)
-- **Duração estimada**: curta (uma sessão)
+**Ordem de uso em runtime (didática):**
+1. `aws sso login`
+2. `terraform apply` (cria ECR + rede + ECS)
+3. `scripts/build-and-push.ps1`
+4. Garantir service puxando a imagem (force new deployment se preciso)
+5. Pegar IP (output/CLI) → `curl`
+6. `terraform destroy`
 
-## Critérios de Sucesso
-- **Objetivo principal**: README em português com guia completo de setup do AI-DLC
-- **Entregáveis-chave**:
-  - `README.md` na raiz
-  - Artefatos de plano/geração em português sob `aidlc-docs/`
-  - Instruções de verificação em Build and Test
-- **Quality gates**:
-  - Conteúdo alinhado a `requirements.md`
-  - Comandos PowerShell fiéis ao setup do usuário
-  - Checklist e troubleshooting presentes
+## Extensions no plano
+| Extension | Enforcement |
+|---|---|
+| Security | N/A (desabilitada) |
+| Resiliency | Aplicar decisões já documentadas; marcar N/A onde escopo exclui HA/ALB/CI-CD |
+| PBT | Full on — na unidade `app`, documentar propriedades N/A ou testes mínimos se houver algo testável |
 
-## Compliance de Extensions (neste plano)
-| Extension | Status | Notas |
-|---|---|---|
-| Security Baseline | N/A (desabilitada) | Opt-out nos requisitos |
-| Resiliency Baseline | N/A (desabilitada) | Opt-out nos requisitos |
-| Property-Based Testing (Partial) | N/A | Sem funções puras/serialização neste entregável de documentação |
+## Critérios de Sucesso do Plano
+- Artefatos de design + código cobrem RF-01..RF-09
+- `terraform apply` + script + curl Hello World documentados
+- Checklist destroy obrigatório no README
+- Comentários didáticos nos `.tf`
+
+## Linha do tempo estimada
+- Inception restante: Application Design + Units Generation
+- Construction: 3 unidades em sequência
+- Duração: algumas sessões (depende de apply real na conta AWS)

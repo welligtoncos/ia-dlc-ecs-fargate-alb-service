@@ -1,91 +1,172 @@
-# Documento de Requisitos
+# Documento de Requisitos — Lab FastAPI + Fargate + Terraform
 
 ## Resumo da Intenção
-- **Pedido do usuário**: Adicionar um README com pré-requisitos e o passo a passo para adicionar AI-DLC ao projeto (Cursor), com base nos comandos PowerShell já executados.
-- **Tipo de pedido**: Documentação (README do projeto)
-- **Escopo**: Arquivo único — `README.md` na raiz do workspace
-- **Complexidade**: Simples / Trivial
-- **Profundidade**: Mínima
-- **Idioma obrigatório**: Português (pt-BR) para **todos** os artefatos deste trabalho, incluindo `aidlc-docs/` e o `README.md`
+- **Pedido**: Projeto de aprendizado para entender ponta a ponta o deploy de app containerizada no AWS Fargate, com infra 100% Terraform.
+- **Tipo**: Novo projeto greenfield (aplicação) em workspace com AI-DLC já configurado.
+- **Escopo**: Múltiplos componentes (app, Docker, ECR, rede, IAM, ECS/Fargate, scripts, docs).
+- **Complexidade**: Moderada, com prioridade didática (explicar o “porquê”).
+- **Profundidade**: Standard.
+- **Idioma**: Português (pt-BR) em artefatos `aidlc-docs/`, README, comentários Terraform e documentação didática.
 
-## Decisões das Perguntas de Esclarecimento
+## Critério de Sucesso
+1. Rodar `terraform apply` (após build/push da imagem conforme script).
+2. Obter IP público (output Terraform e/ou comando CLI de fallback).
+3. Acessar via navegador ou `curl` e ver Hello World (`/` texto; `/health` JSON).
+4. Entender o papel de cada recurso AWS e bloco Terraform no caminho imagem → ECR → Task Definition → Task → IP público.
+5. Executar checklist: validar → `terraform destroy` → confirmar remoção (custo ~zero).
 
-| Tópico | Decisão |
-|---|---|
-| Idioma | Português (pt-BR) — inclusive documentos em `aidlc-docs/` |
-| Cobertura | Guia completo: pré-requisitos, download de `aidlc-rules`, setup no Cursor, checklist de verificação e troubleshooting |
-| Origem do `aidlc-rules` | Assumir pacote já baixado em `%USERPROFILE%\Downloads\aidlc-rules` |
-| Security Baseline | Desabilitado (PoC / experimental) |
-| Resiliency Baseline | Desabilitado (PoC / experimental) |
-| Property-Based Testing | Parcial — apenas funções puras e round-trips de serialização |
+## Decisões Confirmadas (perguntas 1–18)
+
+| # | Tópico | Decisão |
+|---|---|---|
+| 1 | Região | `us-east-1` |
+| 2 | Auth AWS | SSO (`aws sso login`) — perfil configurável; documentar passo no README |
+| 3 | Rede | VPC mínima didática, **1 AZ**, menor conjunto de recursos (subnet pública + IGW + rotas) |
+| 4 | Execução | `aws_ecs_service` com `desired_count = 1`, `assign_public_ip = true`, **sem ALB** + script/docs para IP da ENI |
+| 5 | Output IP | Ambos: tentar output automático no apply **e** documentar CLI de fallback |
+| 6 | Build/push | Terraform só ECR/infra; oficial: `scripts/build-and-push.ps1` |
+| 7 | Fargate size | `256` CPU / `512` MB (fixo) |
+| 8 | Layout repo | `app/` + `infra/` (ecr/ecs/iam/network/variables/outputs + providers) |
+| 9 | README | Único: (1) AI-DLC breve + (2) lab Fargate como conteúdo principal |
+| 10 | Idioma | Tudo em português (pt-BR) |
+| 11 | State TF | Local agora + comentário de migração futura para S3 |
+| 12 | Prefixo | Fixo `hello-fargate` |
+| 13 | Python | `ARG` no Dockerfile com default **3.12** (slim) |
+| 14 | HTTP | `/` → texto `Hello World`; `/health` → JSON simples |
+| 15 | Destroy | Checklist **obrigatório** após validação |
+| 16 | Security Baseline | **Desabilitada** |
+| 17 | Resiliency Baseline | **Habilitada** (várias regras N/A ou “próximos passos” por escopo de estudo) |
+| 18 | PBT | **Habilitada (completa)** — na prática, maior parte N/A para Hello World fino; aplicar onde houver propriedade identificável |
 
 ## Requisitos Funcionais
 
-### RF-1: README em português
-O repositório deve conter um `README.md` na raiz, escrito em português (pt-BR).
+### RF-01 — API FastAPI
+- App em Python + FastAPI + Uvicorn na porta **8000**.
+- `GET /` retorna texto puro `Hello World`.
+- `GET /health` retorna JSON simples (ex.: `{"status":"ok"}` ou equivalente didático).
 
-### RF-2: Seção de pré-requisitos
-Documentar os pré-requisitos para adicionar o AI-DLC, incluindo pelo menos:
-- Cursor IDE (ou editor compatível que carregue regras do projeto)
-- Acesso ao pacote local `aidlc-rules` em `%USERPROFILE%\Downloads\aidlc-rules`
-- Estrutura esperada após o download:
-  - `Downloads\aidlc-rules\aws-aidlc-rules\core-workflow.md`
-  - `Downloads\aidlc-rules\aws-aidlc-rule-details\`
-- PowerShell (Windows) como shell documentado para os comandos de setup
-- Permissão de escrita na raiz do projeto
+### RF-02 — Container
+- `Dockerfile` em `app/` com `ARG` de versão Python (default 3.12 slim).
+- Imagem publicada no Amazon ECR (repositório criado via Terraform).
 
-### RF-3: Localização do pacote
-Documentar que o `aidlc-rules` é esperado em `%USERPROFILE%\Downloads\aidlc-rules` (mesmo caminho usado no setup do usuário). Não inventar URL de download diferente; focar em verificar se a pasta existe antes de copiar.
+### RF-03 — Script de build/push
+- `scripts/build-and-push.ps1` como caminho oficial (login ECR, build, tag, push).
+- Terraform **não** faz build/push via `local-exec` como caminho principal.
 
-### RF-4: Passos de setup no Cursor
-Documentar o fluxo exato usado pelo usuário:
-1. Criar o frontmatter YAML de `.cursor\rules\ai-dlc-workflow.mdc` com `alwaysApply: true`
-2. Gravar o frontmatter nesse arquivo
-3. Anexar o conteúdo de `aws-aidlc-rules\core-workflow.md` ao arquivo de regra
-4. Criar `.aidlc-rule-details`
-5. Copiar recursivamente `aws-aidlc-rule-details\*` para `.aidlc-rule-details\`
+### RF-04 — Infraestrutura Terraform (`infra/`)
+Arquivos por responsabilidade, no mínimo:
+- `network.tf` — VPC mínima, 1 AZ, subnet pública, IGW, route table
+- `ecr.tf` — repositório ECR
+- `iam.tf` — roles da task / execution role
+- `ecs.tf` — cluster, task definition Fargate, service `desired_count = 1`, IP público, sem ALB
+- `variables.tf`, `outputs.tf`, provider/backend (state local + comentário S3)
+- Prefixo de nomes: `hello-fargate`
+- Região default: `us-east-1`
+- CPU/memória: 256/512
 
-### RF-5: Checklist de verificação
-Incluir um checklist para confirmar que o AI-DLC foi instalado corretamente (arquivo de regra existe, frontmatter presente, pastas de rule details presentes, Cursor consegue carregar as regras do projeto).
+### RF-05 — Networking de acesso
+- Security group permitindo ingresso na porta **8000** a partir da internet (estudo; documentar o risco didaticamente).
+- Task com `assign_public_ip = true` em subnet pública.
 
-### RF-6: Troubleshooting
-Incluir falhas comuns (caminho Downloads ausente, arquivo de regra vazio, destino de cópia errado, Cursor não carregando regras) com remédios breves.
+### RF-06 — IP público
+- Output Terraform tentando expor o IP público da task/ENI.
+- Documentação + comando AWS CLI de fallback se o output automático falhar ou o IP mudar após restart.
 
-### RF-7: Como começar após a instalação
-Incluir uma seção curta sobre como fazer o primeiro pedido de AI-DLC no Cursor após o setup (visão geral, sem tutorial completo do ciclo de vida).
+### RF-07 — Validação
+- Instruções para `curl`/navegador em `http://<IP>:8000/` e `/health`.
+- Checklist pós-sucesso com `terraform destroy` e verificação de limpeza.
 
-### RF-8: Idioma dos artefatos AI-DLC deste trabalho
-Todos os documentos gerados sob `aidlc-docs/` para este fluxo (requisitos, planos, resumos de código, build-and-test, etc.) devem ser escritos em português (pt-BR). Mensagens de checkpoint ao usuário também em português.
+### RF-08 — Documentação didática
+- README principal em português cobrindo setup AI-DLC (breve) + lab completo.
+- Comentários no Terraform explicando o **porquê** de VPC, subnet, SG, IAM roles, ECR, task definition, service, etc.
+- Política IAM de estudo existente (`ecs-fargate-alb-policy.json`) pode ser referenciada no README; **ALB permanece fora do escopo de provisionamento deste lab**.
+
+### RF-09 — Autenticação AWS no fluxo
+- Documentar uso de AWS SSO (`aws sso login`) antes de Terraform/AWS CLI/Docker push.
 
 ## Requisitos Não Funcionais
 
-### RNF-1: Precisão
-Os comandos no README devem corresponder à sequência PowerShell validada pelo usuário (adaptados apenas para clareza/legibilidade).
+### RNF-01 — Custo
+- Preferir recursos mínimos; 1 task, 1 AZ, Fargate 256/512; destroy obrigatório no fluxo didático.
 
-### RNF-2: Usabilidade
-Um desenvolvedor novo no repositório deve conseguir seguir o README de forma linear, sem conhecimento prévio de AI-DLC além de instalar o Cursor.
+### RNF-02 — Clareza didática
+- Priorizar compreensão do caminho ponta a ponta sobre padrões de produção.
 
-### RNF-3: Manutenibilidade
-Manter o README focado no setup; não duplicar o conteúdo completo das regras de `core-workflow.md`.
+### RNF-03 — Destruibilidade
+- Tudo criado pelo lab deve ser removível com `terraform destroy` (+ limpeza de imagens ECR se necessário, documentada).
 
-### RNF-4: Segurança operacional
-Não instruir sobrescrita de arquivos não relacionados do projeto; limitar alterações a `.cursor/rules/` e `.aidlc-rule-details/`.
+### RNF-04 — State
+- Backend local; `.gitignore` para `*.tfstate*` / `.terraform/`; comentário sobre S3 no futuro.
 
-## Fora de Escopo
-- Implementação de aplicação/serviço (ECS, ALB, etc.)
-- Alteração do conteúdo das regras do AI-DLC em si
-- Instruções primárias para shells que não sejam PowerShell/Windows (nota opcional breve, se necessário)
-- Ativação das baselines de Security ou Resiliency nesta tarefa de documentação
+### RNF-05 — Observabilidade mínima (Resiliency)
+- Logs da task no CloudWatch Logs (padrão ECS/Fargate).
+- Endpoint `/health` atende health check “shallow” (RESILIENCY-06 parcial; sem ALB — N/A integração com LB).
 
-## Configuração de Extensions (Projeto)
-| Extension | Habilitada | Modo |
+## Fora de Escopo (confirmado)
+- Autoscaling / múltiplas tasks
+- Application Load Balancer
+- Pipeline de CI/CD (deploy manual: script + Terraform)
+- Domínio próprio / HTTPS/TLS
+- Alta disponibilidade / multi-AZ / multi-region
+- Backend remoto S3 (apenas comentário futuro)
+
+## Classificação de Workload (RESILIENCY-01 — preliminar)
+| Componente | Criticidade | Impacto se indisponível |
 |---|---|---|
-| Security Baseline | Não | Ignorada |
-| Resiliency Baseline | Não | Ignorada |
-| Property-Based Testing | Sim | Parcial (funções puras / round-trips de serialização) |
+| API Hello World no Fargate | **Low** (estudo individual) | Apenas aprendizado; sem receita/usuários reais |
+| Infra Terraform | Low | Recriável via `terraform apply` |
 
-## Critérios de Sucesso
-- Existe `README.md` na raiz do workspace em português
-- Cobre pré-requisitos, caminho Downloads, setup no Cursor, verificação, troubleshooting e visão de primeiro uso
-- Reflete os comandos PowerShell já validados pelo usuário
-- Artefatos em `aidlc-docs/` deste fluxo estão em português
+Dependências: ECR (imagem) → Task Definition → ECS Service/Task → ENI/IP público → cliente HTTP.
+
+## Extensions
+
+| Extension | Status | Notas para este lab |
+|---|---|---|
+| Security Baseline | Desabilitada | PoC/estudo |
+| Resiliency Baseline | Habilitada | Decisões abaixo; HA/ALB/autoscaling = N/A por escopo |
+| Property-Based Testing | Habilitada (full) | App mínima: documentar propriedades N/A ou testes triviais se aplicável |
+
+## Decisões Resiliency (esclarecimentos)
+
+| # | Tema | Decisão |
+|---|---|---|
+| 1 | RTO/RPO / DR | **Horas** — Backup & Restore / recriar com Terraform (RESILIENCY-02 / 11) |
+| 2 | Change management | Usar **processo formal da organização** (RESILIENCY-03). *Nome da ferramenta não informado — registrar no README quando conhecido* |
+| 3 | CI/CD | **Deploy manual** (`scripts/build-and-push.ps1` + `terraform apply`); CI/CD fora de escopo |
+| 4 | Rollback | `terraform destroy` + reapply / re-push da imagem boa |
+| 5 | Estilo de deploy | **Direct / in-place** |
+| 6 | Topologia | **Single-region, single-AZ** (sem HA) |
+| 7 | Testes de resiliência | **Propor abordagem mínima** no lab (ex.: validar `/` e `/health`; exercício destroy/recreate) |
+| 8 | Incidentes | Usar **processo existente da organização**. *Nome não informado — placeholder no README* |
+
+### Compliance Resiliency (para este lab)
+| Regra | Status |
+|---|---|
+| RESILIENCY-01 | Compliant — criticidade Low |
+| RESILIENCY-02 / 11 | Compliant — RTO/RPO horas; recover via IaC recreate |
+| RESILIENCY-12 / 13 | N/A — sem dados persistentes; recover = reapply |
+| RESILIENCY-03 | Compliant com ressalva — processo org formal (ferramenta TBD no README) |
+| RESILIENCY-04 | Compliant no escopo — sem pipeline; rollback destroy/reapply; deploy direct |
+| RESILIENCY-05 | Parcial — CloudWatch Logs; dashboard/métricas avançadas N/A documentado |
+| RESILIENCY-06 | Parcial — `/health` shallow; integração LB N/A |
+| RESILIENCY-07–10 | N/A — sem HA, autoscaling, deps externas relevantes |
+| RESILIENCY-08 | Compliant com decisão D — single-AZ explícito (fora de multi-AZ) |
+| RESILIENCY-14 | Compliant — abordagem mínima proposta no README/lab |
+| RESILIENCY-15 | Compliant com ressalva — processo org (ferramenta TBD) |
+
+## Estrutura-alvo do repositório
+
+```text
+.
+├── app/                 # FastAPI, requirements, Dockerfile
+├── infra/               # Terraform (network, ecr, iam, ecs, variables, outputs, ...)
+├── scripts/             # build-and-push.ps1 (+ helpers de IP se necessário)
+├── ecs-fargate-alb-policy.json  # policy IAM de estudo (já existente)
+├── README.md            # AI-DLC breve + lab principal
+├── .aidlc-rule-details/
+├── .cursor/rules/
+└── aidlc-docs/
+```
+
+## Status da etapa
+Análise de Requisitos **pronta para aprovação** (perguntas 1–18 + esclarecimentos Resiliency 1–8).
