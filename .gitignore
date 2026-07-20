@@ -1,0 +1,44 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+# .terraform.lock.hcl pode ser commitado (não ignorar)
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Ambientes virtuais / secrets
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# IDE / SO
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

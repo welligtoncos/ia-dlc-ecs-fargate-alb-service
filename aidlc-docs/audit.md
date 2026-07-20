@@ -380,3 +380,347 @@ esclarecimento que julgar necessárias."
 **Context**: INCEPTION - Units Generation gate (last inception stage)
 
 ---
+
+## Units Generation - Approved / Inception Complete
+**Timestamp**: 2026-07-20T08:24:00Z
+**User Input**: "Aprovo e continuo, prossiga com CONSTRUCTION"
+**AI Response**: Units Generation approved. Inception marked complete. Starting CONSTRUCTION with unit hello-infra (order: infra → app → tooling-docs).
+**Context**: INCEPTION complete; CONSTRUCTION begin - hello-infra
+
+---
+
+## Construction Start - hello-infra
+**Timestamp**: 2026-07-20T08:24:30Z
+**User Input**: "(after Units approval)"
+**AI Response**: Skipped Functional Design for hello-infra (N/A). Created hello-infra-nfr-requirements-plan.md with 6 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-infra - NFR Requirements Planning
+
+---
+
+## NFR Requirements - hello-infra Complete
+**Timestamp**: 2026-07-20T08:27:30Z
+**User Input**: "prenchido, aidlc-docs/construction/plans/hello-infra-nfr-requirements-plan.md"
+**AI Response**: Answers Q1=A, Q2=A, Q3=A, Q4=B, Q5=A, Q6=A. Generated nfr-requirements.md and tech-stack-decisions.md. Awaiting approval before NFR Design.
+**Context**: CONSTRUCTION - hello-infra - NFR Requirements gate
+
+---
+
+## NFR Requirements - hello-infra Approved
+**Timestamp**: 2026-07-20T08:29:00Z
+**User Input**: "Continuar para a próxima etapa — NFR Design"
+**AI Response**: NFR Requirements approved. Proceeding to NFR Design for hello-infra.
+**Context**: CONSTRUCTION - hello-infra - NFR Design start
+
+---
+
+## NFR Design - hello-infra Plan Presented
+**Timestamp**: 2026-07-20T08:29:15Z
+**User Input**: "(awaiting NFR design answers)"
+**AI Response**: Created hello-infra-nfr-design-plan.md with 6 pattern questions. Waiting for answers before generating nfr-design artifacts.
+**Context**: CONSTRUCTION - hello-infra - NFR Design Planning
+
+---
+
+## NFR Design - hello-infra Complete
+**Timestamp**: 2026-07-20T08:44:30Z
+**User Input**: "preenchido,  aidlc-docs/construction/plans/hello-infra-nfr-design-plan.md"
+**AI Response**: Answers Q1=A, Q2=A, Q3=B, Q4=A, Q5=A, Q6=A. Generated nfr-design-patterns.md and logical-components.md. Awaiting approval before Infrastructure Design.
+**Context**: CONSTRUCTION - hello-infra - NFR Design gate
+
+---
+
+## NFR Design - hello-infra Approved
+**Timestamp**: 2026-07-20T08:44:45Z
+**User Input**: "Continuar para a próxima etapa — Infrastructure Design"
+**AI Response**: NFR Design approved. Proceeding to Infrastructure Design for hello-infra.
+**Context**: CONSTRUCTION - hello-infra - Infrastructure Design start
+
+---
+
+## Infrastructure Design - hello-infra Plan Presented
+**Timestamp**: 2026-07-20T08:45:00Z
+**User Input**: "(awaiting infra design answers)"
+**AI Response**: Created hello-infra-infrastructure-design-plan.md with 7 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-infra - Infrastructure Design Planning
+
+---
+
+## Infrastructure Design - hello-infra Complete
+**Timestamp**: 2026-07-20T08:47:30Z
+**User Input**: "preenchido, aidlc-docs/construction/plans/hello-infra-infrastructure-design-plan.md"
+**AI Response**: Answers Q1=A, Q2=A, Q3=A, Q4=C, Q5=C, Q6=A, Q7=B. Generated infrastructure-design.md and deployment-architecture.md. Awaiting approval before Code Generation.
+**Context**: CONSTRUCTION - hello-infra - Infrastructure Design gate
+
+---
+
+## Infrastructure Design - hello-infra Approved
+**Timestamp**: 2026-07-20T08:50:30Z
+**User Input**: "Continuar para a próxima etapa — Code Generation"
+**AI Response**: Infrastructure Design approved. Creating Code Generation Part 1 plan for hello-infra.
+**Context**: CONSTRUCTION - hello-infra - Code Generation Planning
+
+---
+
+## Code Generation Part 1 - hello-infra Plan Presented
+**Timestamp**: 2026-07-20T08:50:45Z
+**User Input**: "(awaiting plan approval)"
+**AI Response**: Created hello-infra-code-generation-plan.md (12 steps for Terraform under infra/). Waiting for explicit approval before Part 2 Generation.
+**Context**: CONSTRUCTION - hello-infra - Code Generation Part 1
+
+---
+
+## Code Generation Part 1 - hello-infra Approved
+**Timestamp**: 2026-07-20T08:54:00Z
+**User Input**: "Aprovar e gerar"
+**AI Response**: Plan approved. Executing Code Generation Part 2 for hello-infra (Terraform under infra/).
+**Context**: CONSTRUCTION - hello-infra - Code Generation Part 2
+
+---
+
+## Code Generation Part 2 - hello-infra Complete
+**Timestamp**: 2026-07-20T08:54:45Z
+**User Input**: "(generation after approval)"
+**AI Response**: Created infra/ Terraform files (network, ecr, iam, logs, ecs, outputs, etc.). Awaiting Code Generation approval before starting hello-app unit.
+**Context**: CONSTRUCTION - hello-infra - Code Generation gate
+
+---
+
+## Code Generation - hello-infra Approved
+**Timestamp**: 2026-07-20T08:56:00Z
+**User Input**: "Continuar para a próxima etapa."
+**AI Response**: hello-infra Code Generation approved. Starting unit hello-app with Functional Design (minimal).
+**Context**: CONSTRUCTION - hello-app start
+
+---
+
+## Functional Design - hello-app Plan Presented
+**Timestamp**: 2026-07-20T08:56:15Z
+**User Input**: "(awaiting functional design answers)"
+**AI Response**: Created hello-app-functional-design-plan.md with 6 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-app - Functional Design Planning
+
+---
+
+## Functional Design - hello-app Complete
+**Timestamp**: 2026-07-20T09:01:30Z
+**User Input**: "preenchido aidlc-docs/construction/plans/hello-app-functional-design-plan.md"
+**AI Response**: Answers Q1=B, Q2=A, Q3=B, Q4=B, Q5=A, Q6=A. Generated functional-design artifacts. Awaiting approval before NFR Requirements.
+**Context**: CONSTRUCTION - hello-app - Functional Design gate
+
+---
+
+## Functional Design - hello-app Approved
+**Timestamp**: 2026-07-20T09:02:00Z
+**User Input**: "Continuar para a próxima etapa — NFR Requirements"
+**AI Response**: Functional Design approved. Creating NFR Requirements plan for hello-app.
+**Context**: CONSTRUCTION - hello-app - NFR Requirements Planning
+
+---
+
+## NFR Requirements - hello-app Plan Presented
+**Timestamp**: 2026-07-20T09:02:15Z
+**User Input**: "(awaiting NFR answers)"
+**AI Response**: Created hello-app-nfr-requirements-plan.md with 6 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-app - NFR Requirements Planning
+
+---
+
+## NFR Requirements - hello-app Complete
+**Timestamp**: 2026-07-20T09:04:30Z
+**User Input**: "preenchido, aidlc-docs/construction/plans/hello-app-nfr-requirements-plan.md"
+**AI Response**: Answers Q1=B, Q2=A, Q3=B, Q4=A, Q5=B, Q6=A. Generated nfr-requirements artifacts. Awaiting approval before NFR Design.
+**Context**: CONSTRUCTION - hello-app - NFR Requirements gate
+
+---
+
+## NFR Requirements - hello-app Approved
+**Timestamp**: 2026-07-20T09:04:45Z
+**User Input**: "Continuar para a próxima etapa — NFR Design"
+**AI Response**: NFR Requirements approved. Creating NFR Design plan for hello-app.
+**Context**: CONSTRUCTION - hello-app - NFR Design Planning
+
+---
+
+## NFR Design - hello-app Plan Presented
+**Timestamp**: 2026-07-20T09:05:00Z
+**User Input**: "(awaiting answers)"
+**AI Response**: Created hello-app-nfr-design-plan.md with 5 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-app - NFR Design Planning
+
+---
+
+## NFR Design - hello-app Complete
+**Timestamp**: 2026-07-20T09:06:30Z
+**User Input**: "preenchido,aidlc-docs/construction/plans/hello-app-nfr-design-plan.md"
+**AI Response**: Answers all A. Generated nfr-design artifacts. Awaiting approval before Infrastructure Design (likely N/A or minimal for app unit).
+**Context**: CONSTRUCTION - hello-app - NFR Design gate
+
+---
+
+## NFR Design - hello-app Approved
+**Timestamp**: 2026-07-20T09:07:00Z
+**User Input**: "Continuar para a próxima etapa"
+**AI Response**: NFR Design approved. Creating minimal Infrastructure Design plan for hello-app (container only).
+**Context**: CONSTRUCTION - hello-app - Infrastructure Design Planning
+
+---
+
+## Infrastructure Design - hello-app Plan Presented
+**Timestamp**: 2026-07-20T09:07:15Z
+**User Input**: "(awaiting answers)"
+**AI Response**: Created hello-app-infrastructure-design-plan.md with 4 questions (container-focused). Waiting for answers.
+**Context**: CONSTRUCTION - hello-app - Infrastructure Design Planning
+
+---
+
+## Infrastructure Design - hello-app Complete
+**Timestamp**: 2026-07-20T09:09:30Z
+**User Input**: "preenchido,aidlc-docs/construction/plans/hello-app-infrastructure-design-plan.md"
+**AI Response**: Answers all A. Documented container-only deploy (context ./app, uvicorn main:app, no HEALTHCHECK, no AWS in this unit). Awaiting approval before Code Generation.
+**Context**: CONSTRUCTION - hello-app - Infrastructure Design gate
+
+---
+
+## Code Generation Part 1 - hello-app Plan Presented
+**Timestamp**: 2026-07-20T09:10:00Z
+**User Input**: "(awaiting plan approval)"
+**AI Response**: Created hello-app-code-generation-plan.md (9 steps). Waiting for approval before generating app code.
+**Context**: CONSTRUCTION - hello-app - Code Generation Part 1
+
+---
+
+## Infrastructure Design - hello-app Approved
+**Timestamp**: 2026-07-20T09:09:45Z
+**User Input**: "Continuar para a próxima etapa "
+**AI Response**: Infrastructure Design approved. Creating Code Generation Part 1 plan for hello-app.
+**Context**: CONSTRUCTION - hello-app - Code Generation Planning
+
+---
+
+## Code Generation Part 1 - hello-app Approved
+**Timestamp**: 2026-07-20T09:11:00Z
+**User Input**: "Aprovar e gerar"
+**AI Response**: Plan approved. Generating hello-app source, Dockerfile, and tests.
+**Context**: CONSTRUCTION - hello-app - Code Generation Part 2
+
+---
+
+## Code Generation Part 2 - hello-app Complete
+**Timestamp**: 2026-07-20T09:11:45Z
+**User Input**: "(generation after approval)"
+**AI Response**: Created app/ (api, main, Dockerfile, requirements) and tests/test_api.py. pytest: 2 passed. Awaiting approval before hello-tooling-docs.
+**Context**: CONSTRUCTION - hello-app - Code Generation gate
+
+---
+
+## Code Generation - hello-app Approved
+**Timestamp**: 2026-07-20T09:14:00Z
+**User Input**: "Continuar para a próxima etapa"
+**AI Response**: hello-app approved. Starting hello-tooling-docs: Functional Design SKIP; NFR Requirements plan presented.
+**Context**: CONSTRUCTION - hello-tooling-docs start
+
+---
+
+## hello-tooling-docs - NFR Plan Presented
+**Timestamp**: 2026-07-20T09:14:15Z
+**User Input**: "(awaiting answers)"
+**AI Response**: Skipped Functional Design. Created hello-tooling-docs-nfr-requirements-plan.md with 6 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-tooling-docs - NFR Requirements Planning
+
+---
+
+## NFR Requirements - hello-tooling-docs Complete
+**Timestamp**: 2026-07-20T09:17:30Z
+**User Input**: "preenchido, aidlc-docs/construction/plans/hello-tooling-docs-nfr-requirements-plan.md"
+**AI Response**: Answers all A. Generated nfr-requirements artifacts. Awaiting approval before NFR Design.
+**Context**: CONSTRUCTION - hello-tooling-docs - NFR Requirements gate
+
+---
+
+## NFR Requirements - hello-tooling-docs Approved
+**Timestamp**: 2026-07-20T09:22:00Z
+**User Input**: "Continuar para a próxima etapa — NFR Design"
+**AI Response**: NFR Requirements approved. Creating NFR Design plan for hello-tooling-docs.
+**Context**: CONSTRUCTION - hello-tooling-docs - NFR Design Planning
+
+---
+
+## NFR Design - hello-tooling-docs Plan Presented
+**Timestamp**: 2026-07-20T09:22:15Z
+**User Input**: "(awaiting answers)"
+**AI Response**: Created hello-tooling-docs-nfr-design-plan.md with 5 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-tooling-docs - NFR Design Planning
+
+---
+
+## NFR Design - hello-tooling-docs Complete
+**Timestamp**: 2026-07-20T09:24:30Z
+**User Input**: "preenchido, aidlc-docs/construction/plans/hello-tooling-docs-nfr-design-plan.md"
+**AI Response**: Answers all A. Generated nfr-design artifacts. Awaiting approval before Infrastructure Design (likely N/A for tooling).
+**Context**: CONSTRUCTION - hello-tooling-docs - NFR Design gate
+
+---
+
+## NFR Design - hello-tooling-docs Approved
+**Timestamp**: 2026-07-20T09:24:45Z
+**User Input**: "Continuar para a próxima etapa"
+**AI Response**: NFR Design approved. Creating minimal Infrastructure Design plan for hello-tooling-docs.
+**Context**: CONSTRUCTION - hello-tooling-docs - Infrastructure Design Planning
+
+---
+
+## Infrastructure Design - hello-tooling-docs Plan Presented
+**Timestamp**: 2026-07-20T09:25:00Z
+**User Input**: "(awaiting answers)"
+**AI Response**: Created hello-tooling-docs-infrastructure-design-plan.md with 3 questions. Waiting for answers.
+**Context**: CONSTRUCTION - hello-tooling-docs - Infrastructure Design Planning
+
+---
+
+## Infrastructure Design - hello-tooling-docs Complete
+**Timestamp**: 2026-07-20T09:25:30Z
+**User Input**: "preenchido, aidlc-docs/construction/plans/hello-tooling-docs-infrastructure-design-plan.md"
+**AI Response**: Answers all A. Documented operator tooling N/A cloud; path resolution for ./infra. Awaiting approval before Code Generation.
+**Context**: CONSTRUCTION - hello-tooling-docs - Infrastructure Design gate
+
+---
+
+## Infrastructure Design - hello-tooling-docs Approved
+**Timestamp**: 2026-07-20T09:26:45Z
+**User Input**: "Continue to Next Stage"
+**AI Response**: Infrastructure Design approved. Created Code Generation Part 1 plan at aidlc-docs/construction/plans/hello-tooling-docs-code-generation-plan.md. Awaiting plan approval before Part 2 generation.
+**Context**: CONSTRUCTION - hello-tooling-docs - transition to Code Generation planning
+
+---
+
+## Code Generation - hello-tooling-docs Plan Approval Prompt
+**Timestamp**: 2026-07-20T09:27:00Z
+**User Input**: "(approval prompt pending)"
+**AI Response**: Presented 7-step plan: scripts/build-and-push.ps1, .gitignore, move IAM policy to docs/, unified README, generation-summary. Waiting for explicit plan approval.
+**Context**: CONSTRUCTION - hello-tooling-docs - Code Generation Part 1 gate
+
+---
+
+## Code Generation - hello-tooling-docs Plan Approved
+**Timestamp**: 2026-07-20T09:28:00Z
+**User Input**: "Approve Plan and Generate"
+**AI Response**: Executed Part 2: scripts/build-and-push.ps1, .gitignore, docs/ecs-fargate-alb-policy.json (moved), README.md unified, generation-summary.md. All plan steps marked [x]. Awaiting Code Generation approval before Build and Test.
+**Context**: CONSTRUCTION - hello-tooling-docs - Code Generation Part 2 complete gate
+
+---
+
+## User Request - README local/Docker test steps
+**Timestamp**: 2026-07-20T15:06:30Z
+**User Input**: "adicione no readme esse passo para testar local e em docker."
+**AI Response**: Adding local (pytest/uvicorn) and Docker build/run validation sections to README.md.
+**Context**: Documentation update during Construction (hello-tooling-docs Code Gen pending approval)
+
+---
+
+## Code Generation - hello-tooling-docs Approved + Build and Test
+**Timestamp**: 2026-07-20T15:08:00Z
+**User Input**: "Approve Plan and Generate — executar Part 2"
+**AI Response**: Clarified Part 2 Code Gen already executed earlier. Treated message as Code Generation approval. Proceeded to Build and Test: rewrote build-instructions, unit/integration/performance instructions and summary for Fargate lab (replacing prior README-only B&T). Awaiting Build and Test approval before Operations placeholder.
+**Context**: CONSTRUCTION - Code Gen approved; Build and Test gate
+
+---

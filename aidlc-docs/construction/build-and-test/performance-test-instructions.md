@@ -1,15 +1,26 @@
-# Instruções de Testes de Performance
+# Performance Test Instructions — Lab Hello Fargate
 
-## Propósito
-Não aplicável de forma tradicional: não há serviço, API ou carga de runtime neste entregável.
+## Purpose
+Lab didático Hello World — **sem requisitos de carga/produção**.
 
-## Requisitos de performance
-- **N/A** — o artefato é um arquivo Markdown estático
+## Performance Requirements
+| Métrica | Expectativa do lab |
+|---|---|
+| Response time | Aceitável em curl manual (segundos) |
+| Throughput / concurrent users | N/A |
+| Error rate sob stress | N/A |
 
-## O que fazer em vez disso
-- Garantir que o README seja legível e linear (RNF-2)
-- Manter comandos copiáveis em blocos PowerShell sem etapas ambíguas
+## Run Performance Tests
+**N/A** — não executar JMeter/k6 neste escopo.
 
-## Status
-- **Performance tests**: N/A
-- **Motivo**: documentação de setup, sem componente executável sob carga
+## Smoke (opcional, local)
+Após `docker run` ou uvicorn:
+
+```powershell
+Measure-Command { curl http://127.0.0.1:8000/ }
+```
+
+Só para curiosidade didática; sem gate de SLO.
+
+## Resiliency (mínimo, alinhado à extensão)
+Documentado no README: curl `/` + `/health` e exercício destroy/recreate (RTO horas / recreate manual).

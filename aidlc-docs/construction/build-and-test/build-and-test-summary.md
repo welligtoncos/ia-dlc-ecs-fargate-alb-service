@@ -1,47 +1,40 @@
-# Resumo de Build and Test
+# Build and Test Summary — Lab Hello Fargate
 
-## Status do Build
-- **Ferramenta**: PowerShell / verificação de Markdown
-- **Status do Build**: Sucesso
-- **Artefatos**: `README.md` (raiz)
-- **Tempo**: verificação imediata
+## Build Status
+- **Ferramentas**: pip, Docker, Terraform, AWS CLI, PowerShell
+- **Status**: Instruções geradas (execução AWS fica com o operador)
+- **Artefatos principais**: `app/`, `infra/`, `scripts/build-and-push.ps1`, `README.md`, `.gitignore`, `docs/`
 
-## Resumo da Execução de Testes
+## Test Execution Summary
 
-### Verificações de conteúdo (equivalente a unit)
-| Verificação | Resultado |
+### Unit Tests (`hello-app`)
+| Item | Valor |
 |---|---|
-| README.md existe | Pass |
-| Português / Pré-requisitos | Pass |
-| Menciona Downloads\aidlc-rules | Pass |
-| Menciona alwaysApply | Pass |
-| Menciona core-workflow | Pass |
-| Menciona aidlc-rule-details | Pass |
-| Tem Checklist | Pass |
-| Tem Troubleshooting | Pass |
+| Comando | `pytest -q` |
+| Esperado | 2 passed |
+| Status | Operador deve executar localmente |
 
-- **Total**: 8
-- **Passou**: 8
-- **Falhou**: 0
-- **Status**: Pass
-
-### Integração (artefatos locais)
-| Verificação | Resultado |
+### Tooling / docs checklist
+| Item | Esperado |
 |---|---|
-| `.cursor\rules\ai-dlc-workflow.mdc` existe | Pass |
-| `.aidlc-rule-details\common\process-overview.md` existe | Pass |
+| Script, README, gitignore, policy em `docs/` | Presentes |
+| Seção Validação local no README | Presente |
 
-- **Status**: Pass
+### Integration
+| Cenário | Tipo |
+|---|---|
+| Docker local + curl | Sem AWS |
+| `build-and-push.ps1` + outputs TF | Com AWS |
+| apply → push → curl → destroy | E2E lab |
 
 ### Performance
-- **Status**: N/A
+- **Status**: N/A (lab didático)
 
-### Testes adicionais
-- **Contract tests**: N/A
-- **Security tests**: N/A (Security Baseline desabilitada; entregável é docs)
-- **E2E tests**: N/A (sem UI/app); checklist do README cobre o fluxo de setup
+### Adicionais
+- Contract / Security automated: N/A
+- E2E: checklist do README + integration Scenario 3
 
-## Arquivos gerados nesta etapa
+## Arquivos desta etapa
 - `build-instructions.md`
 - `unit-test-instructions.md`
 - `integration-test-instructions.md`
@@ -49,13 +42,12 @@
 - `build-and-test-summary.md`
 
 ## Status geral
-- **Build**: Sucesso
-- **Todos os testes aplicáveis**: Pass
-- **Pronto para Operations**: Sim (etapa placeholder)
+- **Construction**: Build and Test documentado — aguardando aprovação do operador
+- **Pronto para Operations**: Após aprovação explícita (Operations = placeholder)
 
 ## Compliance de Extensions
 | Extension | Status |
 |---|---|
 | Security Baseline | N/A (desabilitada) |
-| Resiliency Baseline | N/A (desabilitada) |
-| PBT (Parcial) | N/A — sem código testável por propriedades |
+| Resiliency Baseline | Compliant — smoke curl + destroy/recreate no README/instruções |
+| PBT | N/A (Hello World fino) |

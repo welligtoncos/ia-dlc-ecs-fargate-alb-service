@@ -1,35 +1,45 @@
-# Instruções de Testes Unitários
+# Unit Test Execution — Lab Hello Fargate
 
-## Contexto
-Não há suíte automatizada de unit tests (sem código de aplicação nesta unidade). A verificação é **manual / checklist**, alinhada ao README.
+## Run Unit Tests
 
-## Executar verificações equivalentes a “unitários”
-
-### 1. Checklist de conteúdo do README
+### 1. Executar testes da API (`hello-app`)
 
 Na raiz do repositório:
 
 ```powershell
-$r = Get-Content ".\README.md" -Raw
-@(
-  @{ Nome = 'Pré-requisitos'; Ok = $r -match 'Pr[eé]-?requisitos' },
-  @{ Nome = 'Caminho Downloads'; Ok = $r -match 'Downloads\\aidlc-rules' },
-  @{ Nome = 'alwaysApply'; Ok = $r -match 'alwaysApply' },
-  @{ Nome = 'core-workflow'; Ok = $r -match 'core-workflow' },
-  @{ Nome = 'aidlc-rule-details'; Ok = $r -match 'aidlc-rule-details' },
-  @{ Nome = 'Checklist'; Ok = $r -match 'Checklist' },
-  @{ Nome = 'Troubleshooting'; Ok = $r -match 'Troubleshooting' },
-  @{ Nome = 'Como começar'; Ok = $r -match 'Como começar' }
-) | ForEach-Object { "{0}: {1}" -f $_.Nome, $_.Ok }
+pip install -r app\requirements.txt
+pytest -q
 ```
 
-### 2. Revisar resultados
-- **Esperado**: todos `True`
-- **Cobertura**: RF-1 a RF-7 do documento de requisitos
-- **Relatório**: anotar falhas e corrigir o README
+### 2. Resultados esperados
+- **Total**: 2 testes (`GET /`, `GET /health`)
+- **Passed**: 2
+- **Failed**: 0
+- **Arquivos**: `tests/test_api.py`, `tests/conftest.py`
 
-### 3. Se alguma verificação falhar
-1. Abra `README.md`
-2. Compare com `aidlc-docs/inception/requirements/requirements.md`
-3. Ajuste a seção faltante
-4. Rode o script novamente
+### 3. Se falhar
+1. Conferir imports em `app/api.py` e `app/main.py`
+2. Garantir que o cwd é a raiz do repo (pytest encontra `tests/`)
+3. Reinstalar deps: `pip install -r app\requirements.txt`
+4. Rodar `pytest -v` para detalhe
+
+## Verificações manuais de tooling (`hello-tooling-docs`)
+
+Não há pytest para o script PowerShell. Checklist:
+
+```powershell
+Test-Path .\scripts\build-and-push.ps1
+Test-Path .\docs\ecs-fargate-alb-policy.json
+Test-Path .\README.md
+Test-Path .\.gitignore
+Select-String -Path .\README.md -Pattern "Validação local|build-and-push|terraform destroy|allowed_cidr"
+```
+
+## Terraform (`hello-infra`)
+
+Sem unit test automatizado. Validação estática:
+
+```powershell
+terraform -chdir=infra fmt -check
+terraform -chdir=infra validate   # requer terraform init prévio
+```

@@ -1,35 +1,65 @@
-# Instruções de Testes de Integração
+# Integration Test Instructions — Lab Hello Fargate
 
-## Propósito
-Validar que o README descreve um fluxo que **integra** corretamente com os artefatos locais do AI-DLC (pacote em Downloads + pastas do projeto).
+## Purpose
+Validar interações entre `hello-app` (imagem), `hello-infra` (outputs/ECS) e `hello-tooling-docs` (script/README).
 
-## Cenários
+## Scenario 1 — API em Docker local (app + Dockerfile)
 
-### Cenário 1: Pacote de origem ↔ comandos do README
-- **Descrição**: Os caminhos citados no README existem na máquina de setup
-- **Setup**: pacote em `%USERPROFILE%\Downloads\aidlc-rules`
-- **Passos**:
-  1. `Test-Path "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rules\core-workflow.md"`
-  2. `Test-Path "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rule-details"`
-- **Esperado**: ambos `True` em um ambiente onde o setup será repetido
-- **Cleanup**: nenhum
+### Setup
+```powershell
+docker build -t hello-fargate:local ./app
+docker run --rm -d -p 8000:8000 --name hello-local hello-fargate:local
+```
 
-### Cenário 2: Artefatos do projeto ↔ checklist do README
-- **Descrição**: Após setup (já feito neste repo), os caminhos do checklist existem
-- **Passos**:
-  1. `Test-Path ".\.cursor\rules\ai-dlc-workflow.mdc"`
-  2. `Test-Path ".\.aidlc-rule-details\common\process-overview.md"`
-  3. `Get-Content ".\.cursor\rules\ai-dlc-workflow.mdc" -TotalCount 8`
-- **Esperado**: arquivos existem; frontmatter com `alwaysApply: true` nas primeiras linhas
-- **Cleanup**: nenhum
+### Steps
+```powershell
+curl http://127.0.0.1:8000/
+curl http://127.0.0.1:8000/health
+```
 
-### Cenário 3: Sequência PowerShell do README é coerente
-- **Descrição**: Ordem documentada = frontmatter → append → criar pasta → copiar
-- **Passos**: leitura manual da seção “Como adicionar o AI-DLC no Cursor”
-- **Esperado**: mesma ordem da sequência validada pelo usuário
+### Expected
+- `/` → `Hello World`
+- `/health` → JSON com `"status":"ok"` e `"service":"hello-fargate"`
 
-## Ambiente
-Não é necessário subir serviços, containers ou bancos.
+### Cleanup
+```powershell
+docker stop hello-local
+```
 
-## Status desta execução
-Verificações do Cenário 2 foram executadas neste workspace com sucesso (artefatos presentes).
+## Scenario 2 — Script lê outputs Terraform (tooling ↔ infra)
+
+### Setup
+Infra já aplicada (`terraform apply` em `infra/`).
+
+### Steps
+```powershell
+terraform -chdir=infra output -raw ecr_repository_url
+terraform -chdir=infra output -raw ecs_cluster_name
+terraform -chdir=infra output -raw ecs_service_name
+# O script usa os mesmos outputs:
+.\scripts\build-and-push.ps1 -ResolvePublicIp
+```
+
+### Expected
+- Script completa login ECR, build, push e force-new-deployment sem erro
+- Com `-ResolvePublicIp`, imprime IP ou orienta fallback
+
+### Cleanup
+Não necessário até o destroy do lab.
+
+## Scenario 3 — E2E AWS (lab completo)
+
+### Steps
+1. `aws sso login`
+2. `terraform -chdir=infra apply`
+3. `.\scripts\build-and-push.ps1 -ResolvePublicIp`
+4. Aguardar task RUNNING
+5. `curl http://<IP>:8000/` e `/health`
+6. `terraform -chdir=infra destroy`
+
+### Expected
+Hello World via IP público; recursos removidos após destroy.
+
+## Contract / Security
+- **Contract tests**: N/A (API mínima documentada no README)
+- **Security tests**: N/A (Security Baseline OFF); risco `allowed_cidr` documentado

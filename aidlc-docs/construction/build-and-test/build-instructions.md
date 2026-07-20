@@ -1,50 +1,61 @@
-# Instruções de Build
+# Build Instructions — Lab Hello Fargate
 
-## Contexto
-Este entregável é **documentação** (`README.md`). Não há compilação de aplicação, dependências de runtime nem artefatos binários.
+## Prerequisites
+- **OS**: Windows + PowerShell (comandos abaixo)
+- **Python** 3.12+ (para pytest/uvicorn local)
+- **Docker** Desktop/Engine (imagem local e push ECR)
+- **Terraform** CLI + **AWS CLI v2** + SSO (fluxo AWS)
+- **Dependências Python**: `app/requirements.txt`
 
-## Pré-requisitos
-- **Ferramenta**: PowerShell (Windows)
-- **Dependências**: Nenhuma de build; o conteúdo é Markdown
-- **Variáveis de ambiente**: Nenhuma obrigatória para “build”
-- **Requisitos de sistema**: acesso de leitura à raiz do repositório
+## Build Steps
 
-## Passos de “Build” (validação do artefato)
+### 1. Instalar dependências da app (local)
 
-### 1. Confirmar que o README existe
-
-```powershell
-Test-Path ".\README.md"
-```
-
-Esperado: `True`
-
-### 2. Conferir tamanho mínimo razoável
+Na raiz do repositório:
 
 ```powershell
-(Get-Item ".\README.md").Length
+pip install -r app\requirements.txt
 ```
 
-Esperado: arquivo não vazio (na prática, alguns KB).
-
-### 3. Conferir seções obrigatórias (busca rápida)
+### 2. Build da imagem Docker (local)
 
 ```powershell
-Select-String -Path ".\README.md" -Pattern "Pré-requisitos|Downloads\\aidlc-rules|alwaysApply|Checklist|Troubleshooting|Como começar" 
+# Na raiz do repo (contexto ./app)
+docker build -t hello-fargate:local ./app
 ```
 
-Esperado: várias ocorrências cobrindo as seções do guia.
+Se estiver dentro de `app\`:
 
-## Artefatos gerados
-- `README.md` (raiz do workspace)
-- Documentação de processo em `aidlc-docs/construction/readme-ai-dlc-setup/code/`
+```powershell
+docker build -t hello-fargate:local .
+```
+
+### 3. Build / provisionamento AWS (lab completo)
+
+```powershell
+aws sso login
+terraform -chdir=infra init
+terraform -chdir=infra plan
+terraform -chdir=infra apply
+.\scripts\build-and-push.ps1
+```
+
+O script faz: login ECR → `docker build ./app` → push `:latest` → force-new-deployment.
+
+### 4. Verificar sucesso
+
+| Artefato | Como verificar |
+|---|---|
+| Dependências Python | `pip show fastapi uvicorn pytest` |
+| Imagem local | `docker images hello-fargate:local` |
+| Infra | `terraform -chdir=infra output` |
+| Imagem no ECR | Console ECR ou `aws ecr describe-images` |
 
 ## Troubleshooting
 
-### README.md não encontrado
-- **Causa**: geração não executada ou workspace errado
-- **Solução**: confirme que está na raiz do repositório e que Code Generation foi concluída
-
-### Seções ausentes
-- **Causa**: edição parcial do README
-- **Solução**: compare com `aidlc-docs/inception/requirements/requirements.md` (RF-1 a RF-7)
+| Problema | Causa | Solução |
+|---|---|---|
+| `path "./app" not found` | Build rodado de dentro de `app\` | Use `./app` na raiz ou `.` em `app\` |
+| `terraform output` falha | Apply ainda não rodou | `terraform -chdir=infra apply` |
+| Docker login ECR | SSO expirado | `aws sso login` |
+| Task sem imagem | Push não feito | `.\scripts\build-and-push.ps1` |
