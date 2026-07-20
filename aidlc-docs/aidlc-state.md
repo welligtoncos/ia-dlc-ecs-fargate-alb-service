@@ -1,17 +1,29 @@
 # Rastreamento de Estado AI-DLC
 
 ## Informações do Projeto
-- **Fase**: CONSTRUCTION
-- **Etapa Atual**: Build and Test (instruções geradas — aguardando aprovação)
+- **Fase**: CONCLUÍDA
+- **Workflow**: Lab Hello World — FastAPI + ECR + ECS Fargate + Terraform
+- **Etapa Atual**: Workflow completo (Operations = placeholder)
+
+## Fases
+| Fase | Status |
+|---|---|
+| Inception | Completa |
+| Construction (3 unidades + Build and Test) | Completa |
+| Operations | Placeholder registrado |
 
 ## Unidades
 | Unidade | Status |
 |---|---|
-| `hello-infra` | Completa (Code Gen aprovado) |
-| `hello-app` | Completa (Code Gen aprovado) |
-| `hello-tooling-docs` | Completa (Code Gen aprovado; README com validação local/Docker) |
+| `hello-infra` | Completa |
+| `hello-app` | Completa |
+| `hello-tooling-docs` | Completa |
 
-## Progresso Construction
-- [x] Per-unit loop (3/3)
-- [x] Build and Test (artefatos gerados — aguardando aprovação)
-- [ ] Operations (placeholder)
+## Entregáveis principais
+- `app/` — FastAPI + Dockerfile
+- `infra/` — Terraform Fargate (sem ALB)
+- `scripts/build-and-push.ps1`
+- `README.md` — lab + validação local/Docker + AI-DLC breve
+- `docs/ecs-fargate-alb-policy.json`
+- `.gitignore`
+- `aidlc-docs/` — artefatos do processo

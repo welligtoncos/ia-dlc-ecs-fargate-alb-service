@@ -125,15 +125,15 @@ Pedido
   - **Justificativa**: Decomposição em unidades `app`, `infra`, `tooling-docs`
 
 ### CONSTRUCTION (por unidade, na ordem abaixo)
-- [ ] Functional Design — **EXECUTAR (mínimo)** na unidade `app`; N/A ou mínimo nas demais
-- [ ] NFR Requirements — **EXECUTAR** (custo, logs, resiliência Low, destroy)
-- [ ] NFR Design — **EXECUTAR** (padrões mínimos alinhados às decisões Resiliency)
-- [ ] Infrastructure Design — **EXECUTAR** (mapeamento VPC/ECR/IAM/ECS → recursos Terraform)
-- [ ] Code Generation — **EXECUTAR** (sempre)
-- [ ] Build and Test — **EXECUTAR** (sempre) — instruções locais + checklist AWS
+- [x] Functional Design — **EXECUTAR (mínimo)** na unidade `app`; N/A ou mínimo nas demais
+- [x] NFR Requirements — **EXECUTAR** (custo, logs, resiliência Low, destroy)
+- [x] NFR Design — **EXECUTAR** (padrões mínimos alinhados às decisões Resiliency)
+- [x] Infrastructure Design — **EXECUTAR** (mapeamento VPC/ECR/IAM/ECS → recursos Terraform)
+- [x] Code Generation — **EXECUTAR** (sempre)
+- [x] Build and Test — **EXECUTAR** (sempre) — instruções locais + checklist AWS
 
 ### OPERATIONS
-- [ ] Operations — PLACEHOLDER (destroy/checklist ficam no README + Build and Test)
+- [x] Operations — PLACEHOLDER (destroy/checklist ficam no README + Build and Test)
 
 ## Unidades propostas (para Units Generation)
 

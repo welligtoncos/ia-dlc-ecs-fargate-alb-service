@@ -1,7 +1,7 @@
 # Operations — Resumo (Placeholder)
 
 ## Status
-Esta fase é um **placeholder** no AI-DLC atual. Não há planejamento ou execução de deploy neste workflow.
+Esta fase é um **placeholder** no AI-DLC atual. Não há pipeline de deploy/monitoramento automatizado neste workflow.
 
 ## Escopo futuro (quando expandido)
 - Planejamento e execução de deployment
@@ -10,10 +10,16 @@ Esta fase é um **placeholder** no AI-DLC atual. Não há planejamento ou execu�
 - Fluxos de manutenção e suporte
 - Checklists de prontidão para produção
 
-## Estado atual deste projeto
-- Entregável concluído na Construction: `README.md` com guia de setup do AI-DLC
-- Build and Test: verificações aplicáveis com status **Pass**
-- Nenhuma ação operacional adicional é necessária para este entregável de documentação
+## Estado atual deste projeto (lab Hello Fargate)
+- **Construction concluída**: unidades `hello-infra`, `hello-app`, `hello-tooling-docs` + Build and Test
+- **Operação didática** documentada no `README.md` e no script `scripts/build-and-push.ps1`:
+  1. `aws sso login`
+  2. `terraform -chdir=infra apply`
+  3. `.\scripts\build-and-push.ps1`
+  4. `curl` em `/` e `/health`
+  5. `terraform -chdir=infra destroy` (obrigatório)
+- Placeholders de change management / incidentes da organização permanecem TBD no README
+- CI/CD fora de escopo (deploy manual)
 
 ## Encerramento do workflow
-O fluxo AI-DLC para este pedido está **completo** após Construction (Build and Test).
+O fluxo AI-DLC para o lab FastAPI → ECR → ECS Fargate está **completo**.

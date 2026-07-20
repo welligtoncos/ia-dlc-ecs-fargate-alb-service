@@ -9,11 +9,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    # Usado no output híbrido do IP público (espera curta pela ENI da task).
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.9"
-    }
   }
 
   # State LOCAL (simples para estudo).
