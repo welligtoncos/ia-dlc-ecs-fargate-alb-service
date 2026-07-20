@@ -1,42 +1,42 @@
 # Rastreamento de Estado AI-DLC
 
 ## Informações do Projeto
-- **Tipo de Projeto**: Greenfield
-- **Data de Início**: 2026-07-19T21:01:41Z
-- **Data de Conclusão**: 2026-07-19T21:16:00Z
-- **Etapa Atual**: CONCLUÍDO
-- **Idioma dos artefatos**: Português (pt-BR)
+- **Tipo de Projeto**: Greenfield (aplicação) — workspace com scaffolding AI-DLC + README de setup pré-existentes
+- **Data de Início (novo pedido)**: 2026-07-19T21:17:30Z
+- **Etapa Atual**: INCEPTION - Requirements Analysis (aguardando respostas)
+- **Idioma dos artefatos**: Português (pt-BR) — mantido do fluxo anterior, sujeito a confirmação
+- **Pedido atual**: Hello World FastAPI no AWS Fargate com Terraform (aprendizado ponta a ponta)
+
+## Estado do Workspace
+- **Código de aplicação existente**: Não (sem `.py` / `.tf` / Dockerfile)
+- **Conteúdo existente**: `.cursor/rules/`, `.aidlc-rule-details/`, `README.md` (setup AI-DLC), `aidlc-docs/` (fluxo anterior concluído)
+- **Reverse Engineering**: PULAR — não há codebase de aplicação para analisar
+- **Raiz do Workspace**: C:\welligton-aws\ia-dlc-ecs-fargate-alb-service\ia-dlc-ecs-fargate-alb-service
 
 ## Configuração de Extensions
-| Extension | Habilitada | Decidido Em |
+| Extension | Habilitada | Decidido At |
 |---|---|---|
-| Security Baseline | Não | Requirements Analysis |
-| Resiliency Baseline | Não | Requirements Analysis |
-| Property-Based Testing | Sim (Parcial) | Requirements Analysis |
+| Security Baseline | Pending | Requirements Analysis |
+| Resiliency Baseline | Pending | Requirements Analysis |
+| Property-Based Testing | Pending | Requirements Analysis |
 
-## Progresso das Etapas
+## Progresso das Etapas (novo ciclo)
 
 ### INCEPTION
-- [x] Workspace Detection
-- [x] Reverse Engineering (PULADO)
-- [x] Requirements Analysis
-- [x] User Stories (PULADO)
-- [x] Workflow Planning (APROVADO)
-- [x] Application Design (PULADO)
-- [x] Units Generation (PULADO)
+- [x] Workspace Detection (2026-07-19T21:17:30Z)
+- [x] Reverse Engineering (PULADO — sem código de aplicação)
+- [ ] Requirements Analysis (perguntas apresentadas — aguardando respostas)
+- [ ] User Stories (pendente avaliação)
+- [ ] Workflow Planning
+- [ ] Application Design (pendente avaliação)
+- [ ] Units Generation (pendente avaliação)
 
 ### CONSTRUCTION
-- [x] Functional Design (PULADO)
-- [x] NFR Requirements (PULADO)
-- [x] NFR Design (PULADO)
-- [x] Infrastructure Design (PULADO)
-- [x] Code Generation (APROVADO)
-- [x] Build and Test (APROVADO)
+- [ ] (pendente plano)
 
 ### OPERATIONS
-- [x] Operations (PLACEHOLDER — registrado; sem deploy)
+- [ ] Operations (PLACEHOLDER)
 
 ## Status Atual
-- **Fase do ciclo**: CONCLUÍDO
-- **Entregável principal**: `README.md`
-- **Resumo Operations**: `aidlc-docs/operations/operations-summary.md`
+- **Fase**: INCEPTION
+- **Próxima ação**: Responder `aidlc-docs/inception/requirements/requirement-verification-questions.md`

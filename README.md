@@ -217,3 +217,12 @@ O fluxo é **adaptativo**: etapas condicionais podem ser puladas em mudanças si
 - Este guia documenta o setup no **Windows + PowerShell + Cursor**.
 - Não é necessário copiar o conteúdo completo de `core-workflow.md` para este README; o arquivo de regra do Cursor já o contém.
 - Alterações do setup AI-DLC devem ficar limitadas a `.cursor/rules/` e `.aidlc-rule-details/`.
+
+# ANEXAR POLITICA
+aws iam create-policy --policy-name EcsFargateAlbLearning --policy-document file://C:\welligton-aws\ia-dlc-ecs-fargate-alb-service\ia-dlc-ecs-fargate-alb-service\ecs-fargate-alb-policy.json
+
+# LISTAR POLITICA
+aws iam list-policies --scope Local --query "Policies[?PolicyName=='EcsFargateAlbLearning'].Arn" --output text
+
+# SIMULAÇÃO
+aws iam simulate-principal-policy --policy-source-arn arn:aws:iam::303238378103:user/usuario-dados --action-names ecr:PutImage ecs:CreateCluster ecs:CreateService ecs:RunTask elasticloadbalancing:CreateLoadBalancer elasticloadbalancing:CreateTargetGroup ec2:CreateSecurityGroup ec2:AuthorizeSecurityGroupIngress logs:CreateLogGroup --query "EvaluationResults[].{Action:EvalActionName,Decision:EvalDecision}" --output table

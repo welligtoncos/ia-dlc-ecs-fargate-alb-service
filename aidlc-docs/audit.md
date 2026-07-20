@@ -198,3 +198,65 @@ PS C:\welligton-aws\ia-dlc-ecs-fargate-alb-service\ia-dlc-ecs-fargate-alb-servic
 **Context**: End of AI-DLC run for this request
 
 ---
+
+## Novo Pedido - FastAPI Fargate Lab
+**Timestamp**: 2026-07-19T21:17:30Z
+**User Input**: "Usando AI-DLC, quero desenvolver um projeto de aprendizado cujo objetivo é
+entender de ponta a ponta o fluxo de deploy de uma aplicação containerizada
+no AWS Fargate, provisionando toda a infraestrutura com Terraform.
+
+INTENÇÃO (de aprendizado):
+Subir um `"Hello World`" mínimo no Fargate e acessá-lo pela internet,
+compreendendo cada etapa do caminho: imagem → ECR → Task Definition →
+Task em execução → acesso público.
+
+ESCOPO INCLUÍDO:
+- Uma API HTTP mínima em FastAPI (com Uvicorn) que responde `"Hello World`"
+  em uma rota GET, escutando na porta 8000
+- Dockerfile para containerizar a API
+- Publicação da imagem no Amazon ECR
+- Provisionamento de TODA a infraestrutura AWS via Terraform:
+  repositório ECR, cluster ECS, Task Definition para Fargate, IAM roles,
+  security group e networking necessário
+- Execução de uma ÚNICA Task no Fargate com IP público
+- Validação de que a aplicação responde pela internet
+
+FORA DE ESCOPO (por enquanto):
+- Autoscaling / múltiplas tasks
+- Application Load Balancer
+- Pipeline de CI/CD
+- Domínio próprio, HTTPS/TLS
+- Alta disponibilidade / multi-AZ
+
+CONTEXTO E RESTRIÇÕES:
+- Projeto de estudo individual: priorize clareza didática, explicando o
+  `"porquê`" de cada recurso da AWS (VPC, subnet, security group, IAM role
+  da task, etc.) e de cada bloco Terraform, não só o `"como`"
+- Stack da aplicação: Python + FastAPI + Uvicorn (porta 8000)
+- IaC: Terraform (provider AWS). Organize o código de forma limpa —
+  separe em arquivos por responsabilidade (ex: ecr.tf, ecs.tf, iam.tf,
+  network.tf, variables.tf, outputs.tf), use variáveis para valores
+  configuráveis e exponha o IP público da task como output
+- Custo próximo de zero: quero conseguir subir com `terraform apply` e
+  derrubar tudo com `terraform destroy` ao final
+- Região AWS: [PREENCHA, ex: us-east-1]
+
+CRITÉRIO DE SUCESSO:
+Rodar `terraform apply`, pegar o IP público pelo output, abrir no
+navegador ou curl e ver `"Hello World`" — tendo entendido o papel de cada
+componente e de cada recurso Terraform no caminho.
+
+Antes de gerar qualquer código ou plano, faça as perguntas de
+esclarecimento que julgar necessárias."
+**AI Response**: Started new AI-DLC cycle. Workspace Detection: greenfield app (no .py/.tf). Reverse Engineering skipped. Created clarifying questions (18) in requirement-verification-questions.md. STOPPED before code/plan per user request.
+**Context**: INCEPTION - Requirements Analysis - awaiting answers
+
+---
+
+## Workspace Detection (novo ciclo)
+**Timestamp**: 2026-07-19T21:17:30Z
+**User Input**: "(automatic)"
+**AI Response**: Existing AI-DLC scaffolding + README setup only. No application code. Brownfield for docs/scaffolding; greenfield for FastAPI/Terraform lab. Next: Requirements questions.
+**Context**: INCEPTION - Workspace Detection complete
+
+---
