@@ -820,3 +820,19 @@ esclarecimento que julgar necessárias."
 **Context**: INCEPTION - Units Generation Complete gate
 
 ---
+
+## Units Generation Approved - Inception Complete - Fase 2
+**Timestamp**: 2026-07-21T01:35:45Z
+**User Input**: "Approve & Continue — seguir para Units Generation"
+**AI Response**: Interpreted as approval of Units Generation Complete gate (units already generated). Marked Inception complete. Starting Construction for hello-infra: Functional Design SKIP, then NFR Requirements plan. No Terraform code yet until designs approved.
+**Context**: INCEPTION complete → CONSTRUCTION hello-infra
+
+---
+
+## NFR Requirements - hello-infra Fase 2 Complete
+**Timestamp**: 2026-07-21T01:42:30Z
+**User Input**: "preenchido, aidlc-docs/construction/plans/hello-infra-fase2-nfr-requirements-plan.md"
+**AI Response**: All answers A. Generated nfr-requirements-fase2.md and tech-stack-decisions-fase2.md. Awaiting NFR Requirements approval before NFR Design.
+**Context**: CONSTRUCTION - hello-infra - NFR Requirements gate
+
+---
