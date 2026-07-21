@@ -1,29 +1,23 @@
 # Rastreamento de Estado AI-DLC
 
 ## Informações do Projeto
-- **Fase**: CONCLUÍDA
-- **Workflow**: Lab Hello World — FastAPI + ECR + ECS Fargate + Terraform
-- **Etapa Atual**: Workflow completo (Operations = placeholder)
+- **Projeto**: Fase 2 — HA com ECS Service + ALB
+- **Fase**: INCEPTION
+- **Etapa Atual**: Units Generation (artefatos gerados — aguardando aprovação)
 
-## Fases
-| Fase | Status |
+## Progresso INCEPTION
+- [x] Workspace Detection
+- [x] Reverse Engineering
+- [x] Requirements Analysis
+- [x] User Stories (PULAR)
+- [x] Workflow Planning
+- [x] Application Design
+- [x] Units Generation (gerado — aguardando aprovação)
+
+## Construction (após aprovação Units)
+| Unidade | Ação |
 |---|---|
-| Inception | Completa |
-| Construction (3 unidades + Build and Test) | Completa |
-| Operations | Placeholder registrado |
-
-## Unidades
-| Unidade | Status |
-|---|---|
-| `hello-infra` | Completa |
-| `hello-app` | Completa |
-| `hello-tooling-docs` | Completa |
-
-## Entregáveis principais
-- `app/` — FastAPI + Dockerfile
-- `infra/` — Terraform Fargate (sem ALB)
-- `scripts/build-and-push.ps1`
-- `README.md` — lab + validação local/Docker + AI-DLC breve
-- `docs/ecs-fargate-alb-policy.json`
-- `.gitignore`
-- `aidlc-docs/` — artefatos do processo
+| `hello-infra` | NFR → Infra Design → Code Gen |
+| `hello-tooling-docs` | NFR mín → Code Gen |
+| `hello-app` | SKIP |
+| Build and Test | curl ALB + self-healing |

@@ -1,45 +1,26 @@
-# Métodos / Interfaces dos Componentes
+# Component Methods — Fase 2 (alto nível)
 
-> Regras de negócio detalhadas ficam para Functional Design. Aqui: assinaturas e contratos de alto nível.
+Detalhes de timeout HC / códigos HTTP finos ficam para **Infrastructure Design**. Aqui só contratos.
 
-## ApiApp
-
-### Handlers HTTP (FastAPI)
-| Handler | Método HTTP | Path | Entrada | Saída |
-|---|---|---|---|---|
-| `get_hello` | GET | `/` | — | `str` — corpo texto `Hello World` (text/plain ou equivalente) |
-| `get_health` | GET | `/health` | — | `dict` — JSON simples, ex. `{"status": "ok"}` |
-
-### Funções de domínio (alto nível)
-```text
-get_hello() -> str
-get_health() -> dict[str, str]
-```
-
-### Runtime
-- Processo: Uvicorn servindo a app FastAPI em `0.0.0.0:8000`.
-
-## ContainerImage
-| Operação conceitual | Descrição |
+## ApiApp (inalterado)
+| Método / rota | Descrição |
 |---|---|
-| `build(python_version=3.12)` | Constrói imagem a partir do Dockerfile |
-| `expose_port(8000)` | Container escuta 8000 |
-| `entrypoint_uvicorn()` | Sobe a ApiApp |
+| `GET /` | Hello World text/plain |
+| `GET /health` | JSON status ok — alvo do HC do TG |
 
-## CloudInfra (Terraform — operações conceituais)
-| Operação | Descrição |
+## CloudInfra (conceitual)
+| Contrato | Descrição |
 |---|---|
-| `apply()` | Cria/atualiza rede, ECR, IAM, ECS, logs |
-| `destroy()` | Remove recursos do lab |
-| `output_public_ip()` | Tenta expor IP público da task/ENI |
-| `configure_awslogs()` | Task envia logs ao CloudWatch |
+| `provision_network_ha()` | VPC + 2 subnets públicas |
+| `provision_alb()` | ALB público + listener :80 |
+| `provision_target_group()` | TG ip:8000 + `health_check(/health)` |
+| `register_service_with_tg()` | ECS Service anexa container ao TG |
+| `maintain_desired_count(2)` | Service mantém 2 tasks; recreates |
+| `expose_alb_dns()` | Output `alb_dns_name` |
 
 ## Tooling
-| Operação | Descrição |
+| Contrato | Descrição |
 |---|---|
-| `build_and_push(ecr_url, tag)` | Login ECR + docker build/tag/push (`scripts/build-and-push.ps1`) |
-| `resolve_public_ip_fallback()` | Obtém IP via AWS CLI se output TF falhar/mudar |
-| `print_validation_commands(ip)` | Documenta/curl de validação (README) |
-
-## PBT (Application Design)
-- Propriedades identificáveis na ApiApp: **N/A** (respostas constantes; sem transformações/estado). Documentar no Functional Design.
+| `build_and_push()` | ECR login, docker build/push, force-new-deployment |
+| `print_alb_validation()` | Imprime `curl http://<alb_dns>/` e `/health` |
+| `document_self_healing()` | Passos para encerrar 1 task e observar recuperação |

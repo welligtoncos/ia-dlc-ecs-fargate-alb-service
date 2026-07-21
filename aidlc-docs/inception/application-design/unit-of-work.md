@@ -1,66 +1,40 @@
-# Unidades de Trabalho — Lab FastAPI + Fargate
+# Unidades de Trabalho — Fase 2 (HA + ALB)
 
 ## Modelo
-- **Tipo**: módulos do mesmo lab (não microserviços independentes)
-- **Deployável como container**: apenas a app (`hello-app`)
-- **IaC**: `hello-infra` (Terraform)
-- **Tooling/docs**: `hello-tooling-docs` (scripts, README, `.gitignore`, policy IAM em `docs/`)
+- **Tipo**: módulos do mesmo lab (não microserviços)
+- **Unidades ativas na Construction**: `hello-infra`, `hello-tooling-docs`
+- **Unidade SKIP**: `hello-app` (FastAPI intacta; sem code gen)
 
-## Ordem de Construction / Code Generation
+## Ordem de Construction
 1. `hello-infra`
-2. `hello-app`
-3. `hello-tooling-docs`
+2. `hello-tooling-docs`
 
-## Organização de código (greenfield multi-unit / monorepo de lab)
+## Organização de código (inalterada na estrutura)
 
 ```text
 .
-├── app/                          # hello-app
-│   ├── main.py                   # (ou estrutura mínima FastAPI)
-│   ├── requirements.txt
-│   └── Dockerfile
-├── infra/                        # hello-infra
-│   ├── provider.tf / versions.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── network.tf
-│   ├── ecr.tf
-│   ├── iam.tf
-│   └── ecs.tf
-├── scripts/                      # hello-tooling-docs
-│   └── build-and-push.ps1
-├── docs/                         # hello-tooling-docs
-│   └── ecs-fargate-alb-policy.json   # movido da raiz na geração desta unidade
-├── README.md                     # hello-tooling-docs
-├── .gitignore                    # hello-tooling-docs
-├── .aidlc-rule-details/          # já existente (fora das unidades de lab)
-├── .cursor/                      # já existente
-└── aidlc-docs/                   # processo AI-DLC
+├── app/                 # hello-app (SKIP na Fase 2)
+├── infra/               # hello-infra — evolui para HA/ALB
+├── scripts/             # hello-tooling-docs
+├── docs/
+├── README.md
+└── aidlc-docs/
 ```
 
 ---
 
 ## Unidade: `hello-infra`
-- **Responsabilidade**: Provisionar AWS via Terraform (VPC 1 AZ, SG, ECR, IAM, ECS cluster/task/service, logs, outputs incl. IP).
-- **Componentes**: CloudInfra
-- **Entregáveis**: arquivos `infra/*.tf`, state local + comentário S3, prefixo `hello-fargate`, região `us-east-1`, Fargate 256/512
-- **Não inclui**: código Python, Dockerfile, scripts de push, README completo
-
-## Unidade: `hello-app`
-- **Responsabilidade**: API FastAPI (`/`, `/health`), deps Python, Dockerfile (ARG Python 3.12)
-- **Componentes**: ApiApp, ContainerImage
-- **Entregáveis**: `app/main.py` (ou equivalente), `app/requirements.txt`, `app/Dockerfile`
-- **Não inclui**: Terraform, scripts AWS
+- **Responsabilidade**: Terraform — VPC **2 AZs**, SGs alb/task, ALB + listener :80, Target Group + HC `/health`, ECS Service `desired_count=2` + `load_balancer`, ECR/IAM/logs existentes, output `alb_dns_name`
+- **Componentes**: CloudInfra (incl. ALB/TG/Service HA)
+- **Entregáveis**: `infra/*.tf` atualizados (ex.: `network.tf`, `alb.tf` ou equivalente, `ecs.tf`, `outputs.tf`)
+- **Não inclui**: mudança de código Python; README completo
 
 ## Unidade: `hello-tooling-docs`
-- **Responsabilidade**: LabOrchestration documentado; `scripts/build-and-push.ps1`; fallback IP; README (AI-DLC breve + lab); `.gitignore`; mover/referenciar policy em `docs/ecs-fargate-alb-policy.json`
-- **Componentes**: Tooling + documentação
-- **Entregáveis**: `scripts/`, `docs/`, `README.md`, `.gitignore`
-- **Não inclui**: lógica da API nem recursos Terraform (exceto consumir outputs)
+- **Responsabilidade**: LabOrchestration Fase 2 — README (DNS ALB, self-healing), ajustes mínimos no `build-and-push.ps1` (ex. imprimir `alb_dns_name`), policy IAM docs se necessário
+- **Componentes**: Tooling + docs
+- **Entregáveis**: `README.md`, `scripts/build-and-push.ps1` (delta), `docs/` se preciso
+- **Não inclui**: provisionar recursos AWS
 
-## PBT / Resiliency por unidade
-| Unidade | PBT | Resiliency |
-|---|---|---|
-| hello-app | Provável N/A (respostas constantes); documentar | `/health` |
-| hello-infra | N/A | single-AZ, destroy/recreate, awslogs |
-| hello-tooling-docs | N/A | checklist destroy, validação curl, SSO |
+## Unidade: `hello-app` (SKIP)
+- Sem loop de Construction na Fase 2
+- Continua servindo `/` e `/health` para o HC do TG

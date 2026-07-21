@@ -1,32 +1,21 @@
-# Serviços e Orquestração
+# Services — Fase 2
 
-## Serviços runtime (AWS)
+## LabOrchestration (conceitual)
+Orquestração **manual** do lab (não é um serviço AWS):
 
-### EcsFargateService (parte de CloudInfra)
-- **Tipo**: `aws_ecs_service` com `desired_count = 1`, `launch_type = FARGATE`, `assign_public_ip = true`, **sem load balancer**.
-- **Responsabilidade**: Manter uma task da ApiApp (imagem no ECR) em execução.
-- **Não é**: ALB, autoscaling, multi-AZ.
+1. `aws sso login`
+2. `terraform apply` (rede HA + ALB + service desired=2)
+3. `scripts/build-and-push.ps1`
+4. `curl http://<alb_dns_name>/` e `/health`
+5. Exercício: encerrar 1 task no console → observar self-healing
+6. `terraform destroy`
 
-### EcrRepository (parte de CloudInfra)
-- Armazena a imagem produzida por ContainerImage + Tooling.
+## ECS Service (runtime AWS)
+- Nome lógico: service `hello-fargate`
+- Mantém `desired_count=2`
+- Integra com Target Group (registro automático de IPs das tasks)
+- Não substitui o ALB: o ALB é o front door HTTP
 
-## Serviço conceitual de lab
-
-### LabOrchestration
-- **Tipo**: Orquestração **didática** (não é um processo/daemon adicional).
-- **Responsabilidade**: Descrever e coordenar o fluxo ponta a ponta usando passos manuais + scripts.
-- **Fluxo**:
-  1. `aws sso login`
-  2. `terraform apply` (CloudInfra)
-  3. `scripts/build-and-push.ps1` (Tooling ← ContainerImage ← ApiApp)
-  4. Garantir que o service puxe a imagem (redeploy se necessário)
-  5. Obter IP (`output_public_ip` e/ou `resolve_public_ip_fallback`)
-  6. Validar `curl` `/` e `/health`
-  7. `terraform destroy` (obrigatório no checklist)
-
-- **Participantes**: operador humano + Tooling + CloudInfra + ApiApp (via container).
-
-## Padrão de orquestração
-- **Estilo**: Pipeline manual documentado (direct/in-place deploy).
-- **Rollback**: destroy + reapply / re-push imagem (conforme requisitos Resiliency).
-- **Sem** orquestrador Kubernetes/Step Functions/CI-CD neste escopo.
+## Não há
+- Serviço de aplicação novo
+- Service mesh / API Gateway

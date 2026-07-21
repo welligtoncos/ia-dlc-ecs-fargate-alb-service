@@ -1,59 +1,50 @@
-# Dependências e Fluxo de Dados
+# Component Dependency — Fase 2
 
-## Matriz de dependências
-
-| De → Para | Tipo | Motivo |
-|---|---|---|
-| ContainerImage → ApiApp | build-time | Dockerfile empacota o código da API |
-| Tooling → ContainerImage | build-time | Script faz `docker build` |
-| Tooling → CloudInfra | runtime/ops | Precisa URL do ECR (output) para push |
-| CloudInfra → Tooling/ContainerImage | runtime | ECS Service precisa da imagem **já publicada** no ECR |
-| LabOrchestration → todos | conceitual | Coordena a ordem didática |
-| Cliente HTTP → ApiApp | runtime | Via IP público da ENI da task (CloudInfra) |
-
-## Fluxo ponta a ponta (texto)
+## Diagrama
 
 ```text
-[Desenvolvedor]
-    |  (1) sso login
-    v
-[CloudInfra / terraform apply]
-    |  cria VPC, SG, ECR, IAM, ECS Service (pode ficar unhealthy até haver imagem)
-    v
-[Tooling / build-and-push]
-    |  build ContainerImage (ApiApp) -> push ECR
-    v
-[ECS Task Fargate]
-    |  pull imagem, bind 8000, awslogs
-    v
-[ENI + IP público] --output TF e/ou CLI fallback-->
-    v
-[Cliente] GET /  e  GET /health
-    v
-[CloudInfra / terraform destroy]
+[Cliente HTTP]
+      |
+      v
+   [ALB]  ---- SG alb :80
+      |
+      v
+[Target Group + HC /health]
+      |
+      +----> [Task 1 ApiApp]  -- SG task :8000 (só do SG alb)
+      +----> [Task 2 ApiApp]
+                ^
+                | imagem
+             [ECR] <--- [Tooling build-and-push]
+                ^
+                | provisiona
+           [CloudInfra / Terraform]
 ```
-
-## Diagrama de dependência (Mermaid)
 
 ```mermaid
-flowchart LR
-    ApiApp --> ContainerImage
-    ContainerImage --> Tooling
-    CloudInfra -->|ECR URL| Tooling
-    Tooling -->|push imagem| CloudInfra
-    CloudInfra -->|task IP:8000| Client["Cliente HTTP"]
-    LabOrch["LabOrchestration"] -.-> ApiApp
-    LabOrch -.-> ContainerImage
-    LabOrch -.-> CloudInfra
-    LabOrch -.-> Tooling
+flowchart TD
+  Client["Cliente"] --> ALB["ALB"]
+  ALB --> TG["Target Group"]
+  TG --> T1["Task1 ApiApp"]
+  TG --> T2["Task2 ApiApp"]
+  Tooling["Tooling"] --> ECR["ECR"]
+  ECR --> T1
+  ECR --> T2
+  TF["CloudInfra"] --> ALB
+  TF --> TG
+  TF --> ECR
 ```
 
-## Alternativa em texto
-- ApiApp → ContainerImage → Tooling → (push) → ECR/CloudInfra → Task → Cliente
-- LabOrchestration coordena a ordem; não é runtime AWS extra
+## Matriz
+| De | Para | Tipo |
+|---|---|---|
+| Cliente | ALB | runtime HTTP |
+| ALB | TG / Tasks | runtime |
+| ECS Service | Tasks + TG | runtime control plane |
+| Tooling | ECR / ECS | ops |
+| Terraform | todos recursos AWS | provision |
+| ApiApp | — | sem dependência do ALB no código |
 
-## Comunicação
-- **ApiApp ↔ Cliente**: HTTP síncrono
-- **Tooling ↔ AWS**: AWS CLI / Docker API
-- **CloudInfra ↔ AWS**: Terraform provider
-- **Sem** mensageria, sem service mesh, sem ALB
+## Acoplamento
+- App **desacoplada** do ALB (sem headers custom).
+- CloudInfra concentra acoplamento ALB↔Service↔SG.

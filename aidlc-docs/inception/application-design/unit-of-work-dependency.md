@@ -1,36 +1,20 @@
-# Dependências entre Unidades de Trabalho
-
-## Ordem de geração (Construction)
-```text
-hello-infra  -->  hello-app  -->  hello-tooling-docs
-```
-
-## Matriz
+# Dependências entre Unidades — Fase 2
 
 | Unidade | Depende de | Motivo |
 |---|---|---|
-| `hello-infra` | — (na geração) | Define ECR URL, rede, ECS; pode referenciar tag de imagem convencionada |
-| `hello-app` | Conceitos de `hello-infra` (porta 8000, região) | Imagem deve casar com task definition; geração após infra para alinhar nomes/tag |
-| `hello-tooling-docs` | `hello-infra` (outputs ECR/cluster) + `hello-app` (contexto Docker) | Script de push e README usam nomes reais dos recursos |
+| `hello-infra` | — (reutiliza imagem ECR/`hello-app` já existente) | Provisiona ALB/Service |
+| `hello-tooling-docs` | `hello-infra` (output `alb_dns_name`, cluster/service) | Documenta DNS e fluxo |
+| `hello-app` | — | SKIP; já deployável via imagem atual |
 
-## Dependência em runtime (lab)
-```text
-1. terraform apply          (hello-infra)
-2. build-and-push.ps1       (hello-tooling-docs + imagem hello-app)
-3. service puxa imagem      (hello-infra consome ECR)
-4. curl IP:8000             (validação docs)
-5. terraform destroy        (hello-infra + checklist tooling)
-```
-
-## Diagrama
+## Ordem runtime (didática)
+1. `terraform apply` (`hello-infra`)
+2. `build-and-push.ps1` (tooling; pode só redeploy se imagem já existe)
+3. curl DNS ALB
+4. Exercício self-healing
+5. destroy
 
 ```mermaid
 flowchart LR
-    Infra["hello-infra"] --> App["hello-app"]
-    App --> Tooling["hello-tooling-docs"]
-    Infra -.->|ECR URL / outputs| Tooling
+  App["hello-app SKIP"] -.-> Infra["hello-infra"]
+  Infra --> Tool["hello-tooling-docs"]
 ```
-
-## Alternativa em texto
-- Geração: infra → app → tooling
-- Runtime: apply(infra) → push(tooling+app) → validate → destroy(infra)

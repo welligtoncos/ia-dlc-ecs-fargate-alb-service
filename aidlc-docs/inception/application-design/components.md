@@ -1,36 +1,38 @@
-# Componentes — Lab FastAPI + Fargate
+# Componentes — Fase 2 (HA + ALB)
 
 ## Visão geral
-Quatro componentes lógicos + um serviço conceitual de orquestração do lab (`LabOrchestration`, ver `services.md`).
+Mesmos quatro componentes da Fase 1; **CloudInfra** ganha ALB/TG/Service HA. **ApiApp** permanece intacta.
 
-| Componente | Pasta / artefatos | Propósito |
+| Componente | Pasta | Propósito na Fase 2 |
 |---|---|---|
-| **ApiApp** | `app/` (código Python) | API HTTP mínima FastAPI/Uvicorn |
-| **ContainerImage** | `app/Dockerfile` (+ deps) | Empacota a API em imagem OCI |
-| **CloudInfra** | `infra/*.tf` | Provisiona AWS (rede, ECR, IAM, ECS/Fargate, logs) |
-| **Tooling** | `scripts/`, partes do `README.md` | Build/push, fallback de IP, guias operacionais do lab |
+| **ApiApp** | `app/` | FastAPI `/` e `/health` (sem mudanças) |
+| **ContainerImage** | `app/Dockerfile` | Imagem OCI (sem mudanças) |
+| **CloudInfra** | `infra/*.tf` | VPC 2 AZ, ECR, IAM, logs, **ALB + TG + HC**, ECS Service desired=2 |
+| **Tooling** | `scripts/`, `README.md` | Push imagem; curl **DNS ALB**; roteiro self-healing |
+
+Serviço conceitual: **LabOrchestration** (ver `services.md`).
 
 ---
 
 ## ApiApp
-- **Responsabilidades**: Expor `GET /` (texto Hello World) e `GET /health` (JSON); escutar na porta 8000.
-- **Não faz**: Provisionar AWS, build/push de imagem, obter IP público.
-- **Interfaces**: HTTP na porta 8000; logs em stdout/stderr.
+- **Responsabilidades**: HTTP na 8000; `/` e `/health`.
+- **Não faz**: Conhecer ALB, headers especiais, ou networking AWS.
+- **Nota Q5**: Resposta B (código custom para ALB) **rejeitada no design** por conflitar com RF “app intacta”; adotado comportamento de A.
 
 ## ContainerImage
-- **Responsabilidades**: Definir imagem Docker (Python ARG default 3.12 slim), instalar deps, comando Uvicorn na 8000.
-- **Não faz**: Criar repositório ECR (isso é CloudInfra); push (Tooling).
-- **Interfaces**: Artefato de imagem local tagueável para ECR.
+- Inalterado vs Fase 1.
 
 ## CloudInfra
-- **Responsabilidades**: VPC mínima 1 AZ, subnet pública, IGW, rotas, SG (8000), ECR, IAM roles, cluster ECS, task definition Fargate, service `desired_count=1` com IP público, log driver awslogs/CloudWatch, outputs (incl. tentativa de IP público).
-- **Não faz**: Build/push da imagem; critério de sucesso curl (Tooling/README).
-- **Interfaces**: Estado Terraform; outputs; recursos AWS com prefixo `hello-fargate`.
+- **Responsabilidades**:
+  - Rede: 2 subnets públicas / 2 AZs, IGW, rotas
+  - SG **alb** (ingress 80) e SG **task** (ingress 8000 só do SG alb)
+  - ALB público + listener :80 + Target Group (ip, :8000, HC `/health`)
+  - ECS cluster, task definition, service `desired_count=2` + `load_balancer`
+  - ECR, IAM, CloudWatch Logs
+  - Output principal: `alb_dns_name`
+- **Não faz**: Build/push; matar task no exercício (operador no console)
 
 ## Tooling
-- **Responsabilidades**: `scripts/build-and-push.ps1`; comando/script de fallback para IP da ENI; documentação operacional no README (SSO, curl, destroy).
-- **Não faz**: Definir recursos AWS (exceto consumir outputs/ARNs).
-- **Interfaces**: CLI AWS/Docker; scripts PowerShell.
-
-## Observabilidade
-- **Não é componente separado** — CloudWatch Logs pertence a **CloudInfra**; ApiApp apenas escreve em stdout.
+- Build/push + force-new-deployment
+- Documentar DNS ALB (não IP da task como fluxo principal)
+- Guia self-healing + destroy

@@ -1,172 +1,166 @@
-# Documento de Requisitos — Lab FastAPI + Fargate + Terraform
+# Documento de Requisitos — Fase 2 (HA + ALB)
 
 ## Resumo da Intenção
-- **Pedido**: Projeto de aprendizado para entender ponta a ponta o deploy de app containerizada no AWS Fargate, com infra 100% Terraform.
-- **Tipo**: Novo projeto greenfield (aplicação) em workspace com AI-DLC já configurado.
-- **Escopo**: Múltiplos componentes (app, Docker, ECR, rede, IAM, ECS/Fargate, scripts, docs).
-- **Complexidade**: Moderada, com prioridade didática (explicar o “porquê”).
+- **Pedido**: Evoluir o lab da Fase 1 (FastAPI no Fargate) para arquitetura de alta disponibilidade didática com **ECS Service (desired=2)** + **Application Load Balancer** público, Target Group, health checks e demonstração de self-healing.
+- **Tipo**: Enhancement / brownfield (infra + docs; app reutilizada).
+- **Escopo**: Principalmente `infra/`, README/scripts/docs; app **intacta** (FastAPI).
+- **Complexidade**: Moderada–alta (multi-AZ, ALB, SGs, service↔TG).
 - **Profundidade**: Standard.
-- **Idioma**: Português (pt-BR) em artefatos `aidlc-docs/`, README, comentários Terraform e documentação didática.
+- **Idioma**: Português (pt-BR).
 
-## Critério de Sucesso
-1. Rodar `terraform apply` (após build/push da imagem conforme script).
-2. Obter IP público (output Terraform e/ou comando CLI de fallback).
-3. Acessar via navegador ou `curl` e ver Hello World (`/` texto; `/health` JSON).
-4. Entender o papel de cada recurso AWS e bloco Terraform no caminho imagem → ECR → Task Definition → Task → IP público.
-5. Executar checklist: validar → `terraform destroy` → confirmar remoção (custo ~zero).
+## Critérios de Aceite
+1. API acessível via **DNS do ALB** (`http://<alb-dns>/` e `/health`).
+2. ECS Service mantém **2 tasks** RUNNING.
+3. ALB distribui requisições entre as tasks (Target Group).
+4. Health checks do TG (`/health`) funcionando; targets unhealthy saem do balanceamento.
+5. Encerrar **manualmente** 1 task → Service recria; ALB/TG se ajustam; app permanece disponível.
+6. Checklist `terraform destroy` após o exercício (custo).
 
-## Decisões Confirmadas (perguntas 1–18)
+## Decisões Confirmadas (Q1–Q11)
 
 | # | Tópico | Decisão |
 |---|---|---|
-| 1 | Região | `us-east-1` |
-| 2 | Auth AWS | SSO (`aws sso login`) — perfil configurável; documentar passo no README |
-| 3 | Rede | VPC mínima didática, **1 AZ**, menor conjunto de recursos (subnet pública + IGW + rotas) |
-| 4 | Execução | `aws_ecs_service` com `desired_count = 1`, `assign_public_ip = true`, **sem ALB** + script/docs para IP da ENI |
-| 5 | Output IP | Ambos: tentar output automático no apply **e** documentar CLI de fallback |
-| 6 | Build/push | Terraform só ECR/infra; oficial: `scripts/build-and-push.ps1` |
-| 7 | Fargate size | `256` CPU / `512` MB (fixo) |
-| 8 | Layout repo | `app/` + `infra/` (ecr/ecs/iam/network/variables/outputs + providers) |
-| 9 | README | Único: (1) AI-DLC breve + (2) lab Fargate como conteúdo principal |
-| 10 | Idioma | Tudo em português (pt-BR) |
-| 11 | State TF | Local agora + comentário de migração futura para S3 |
-| 12 | Prefixo | Fixo `hello-fargate` |
-| 13 | Python | `ARG` no Dockerfile com default **3.12** (slim) |
-| 14 | HTTP | `/` → texto `Hello World`; `/health` → JSON simples |
-| 15 | Destroy | Checklist **obrigatório** após validação |
-| 16 | Security Baseline | **Desabilitada** |
-| 17 | Resiliency Baseline | **Habilitada** (várias regras N/A ou “próximos passos” por escopo de estudo) |
-| 18 | PBT | **Habilitada (completa)** — na prática, maior parte N/A para Hello World fino; aplicar onde houver propriedade identificável |
+| 1 | Framework | Manter **FastAPI** (não Flask) |
+| 2 | Rede | **2 AZs** / 2 subnets públicas |
+| 3 | TLS | Somente **HTTP :80** no ALB (sem ACM) |
+| 4 | Tasks | Subnets públicas + `assign_public_ip = true` (sem NAT); **acesso HTTP principal só via ALB** |
+| 5 | Health check TG | Path **`/health`**, porta **8000**, matcher 200 |
+| 6 | Service | **desired_count = 2** + teste de matar 1 task |
+| 7 | Repo | `infra/` + README/scripts/docs; **app intacta**; prefixo `hello-fargate` |
+| 8 | Apply | Evoluir Terraform **in-place** (pode exigir destroy parcial / replace de rede) |
+| 9 | Security Baseline | **Desabilitada** |
+| 10 | Resiliency Baseline | **Habilitada** (direcional; HA/self-healing alinhados ao lab) |
+| 11 | PBT | **Desabilitada** |
+
+## Herdado da Fase 1 (ainda válido)
+| Item | Valor |
+|---|---|
+| Região | `us-east-1` |
+| Auth | AWS SSO |
+| Fargate | 256 CPU / 512 MB |
+| Build/push | `scripts/build-and-push.ps1` (não local-exec) |
+| State | Local + comentário S3 futuro |
+| API | `GET /` Hello World; `GET /health` JSON |
+| Destroy | Checklist obrigatório |
+| Processos org | Change management / incidentes = placeholders TBD (Fase 1) |
+
+## Arquitetura alvo
+
+```text
+Internet
+   ↓
+ALB público (HTTP :80) — 2 AZs
+   ↓
+Target Group (protocol HTTP, port 8000, HC GET /health)
+   ↓
+ECS Service desired_count=2
+   ├── Task 1 Fargate (AZ-a)
+   └── Task 2 Fargate (AZ-b)
+```
+
+```mermaid
+flowchart TD
+  User["Cliente HTTP"] --> ALB["ALB :80"]
+  ALB --> TG["Target Group + HC /health"]
+  TG --> Svc["ECS Service desired=2"]
+  Svc --> T1["Task 1"]
+  Svc --> T2["Task 2"]
+  T1 --> API["FastAPI :8000"]
+  T2 --> API
+```
 
 ## Requisitos Funcionais
 
-### RF-01 — API FastAPI
-- App em Python + FastAPI + Uvicorn na porta **8000**.
-- `GET /` retorna texto puro `Hello World`.
-- `GET /health` retorna JSON simples (ex.: `{"status":"ok"}` ou equivalente didático).
+### RF-F2-01 — Reutilizar API
+- Sem alterações significativas em `app/`; manter FastAPI + `/` e `/health`.
 
-### RF-02 — Container
-- `Dockerfile` em `app/` com `ARG` de versão Python (default 3.12 slim).
-- Imagem publicada no Amazon ECR (repositório criado via Terraform).
+### RF-F2-02 — Rede multi-AZ
+- VPC com **duas** subnets públicas em AZs distintas + IGW + rotas.
+- Evoluir `network.tf` (in-place).
 
-### RF-03 — Script de build/push
-- `scripts/build-and-push.ps1` como caminho oficial (login ECR, build, tag, push).
-- Terraform **não** faz build/push via `local-exec` como caminho principal.
+### RF-F2-03 — Application Load Balancer
+- ALB **público**, listener **HTTP :80**.
+- Encaminha ao Target Group.
+- Output Terraform: `alb_dns_name` (fluxo principal do README).
 
-### RF-04 — Infraestrutura Terraform (`infra/`)
-Arquivos por responsabilidade, no mínimo:
-- `network.tf` — VPC mínima, 1 AZ, subnet pública, IGW, route table
-- `ecr.tf` — repositório ECR
-- `iam.tf` — roles da task / execution role
-- `ecs.tf` — cluster, task definition Fargate, service `desired_count = 1`, IP público, sem ALB
-- `variables.tf`, `outputs.tf`, provider/backend (state local + comentário S3)
-- Prefixo de nomes: `hello-fargate`
-- Região default: `us-east-1`
-- CPU/memória: 256/512
+### RF-F2-04 — Target Group e Health Checks
+- Target type `ip` (awsvpc).
+- Protocol/port HTTP **8000**.
+- Health check path **`/health`**, sucesso HTTP 200.
+- Integração com ECS Service (`load_balancer` block).
 
-### RF-05 — Networking de acesso
-- Security group permitindo ingresso na porta **8000** a partir da internet (estudo; documentar o risco didaticamente).
-- Task com `assign_public_ip = true` em subnet pública.
+### RF-F2-05 — ECS Service HA
+- `desired_count = 2`.
+- Substituição automática de tasks (comportamento nativo do Service).
+- Tasks em ambas as subnets/AZs.
+- `assign_public_ip = true` (lab sem NAT).
 
-### RF-06 — IP público
-- Output Terraform tentando expor o IP público da task/ENI.
-- Documentação + comando AWS CLI de fallback se o output automático falhar ou o IP mudar após restart.
+### RF-F2-06 — Security Groups
+- **SG ALB**: ingress 80 (CIDR configurável / default aberto documentado); egress para tasks.
+- **SG tasks**: ingress **8000 somente a partir do SG do ALB** (não mais 8000 aberto ao mundo como caminho principal).
+- Egress tasks: ECR pull + CloudWatch (como Fase 1).
 
-### RF-07 — Validação
-- Instruções para `curl`/navegador em `http://<IP>:8000/` e `/health`.
-- Checklist pós-sucesso com `terraform destroy` e verificação de limpeza.
+### RF-F2-07 — Observabilidade
+- Manter CloudWatch Logs da task (`/ecs/hello-fargate` ou equivalente).
 
-### RF-08 — Documentação didática
-- README principal em português cobrindo setup AI-DLC (breve) + lab completo.
-- Comentários no Terraform explicando o **porquê** de VPC, subnet, SG, IAM roles, ECR, task definition, service, etc.
-- Política IAM de estudo existente (`ecs-fargate-alb-policy.json`) pode ser referenciada no README; **ALB permanece fora do escopo de provisionamento deste lab**.
+### RF-F2-08 — Tooling / docs
+- README: fluxo SSO → apply → build-and-push → **curl no DNS do ALB** → exercício self-healing → destroy.
+- Atualizar guia didático (papel ALB, TG, Service vs task isolada).
+- Atualizar policy IAM de estudo se faltar ação ELB (já parcial em `docs/`).
 
-### RF-09 — Autenticação AWS no fluxo
-- Documentar uso de AWS SSO (`aws sso login`) antes de Terraform/AWS CLI/Docker push.
+### RF-F2-09 — Cenário de validação self-healing
+1. Acessar API pelo DNS do ALB.
+2. Confirmar `/` e `/health`.
+3. No console ECS, encerrar 1 task.
+4. Observar: Service detecta desired&lt;running; nova task; TG deregistra unhealthy / registra nova após HC; app disponível.
 
 ## Requisitos Não Funcionais
 
-### RNF-01 — Custo
-- Preferir recursos mínimos; 1 task, 1 AZ, Fargate 256/512; destroy obrigatório no fluxo didático.
+### RNF-F2-01 — Custo
+- Lab: 1 ALB + 2 tasks Fargate small; destroy obrigatório.
+- Sem NAT Gateway (decisão Q4-A).
 
-### RNF-02 — Clareza didática
-- Priorizar compreensão do caminho ponta a ponta sobre padrões de produção.
+### RNF-F2-02 — Disponibilidade didática
+- Objetivo: demonstrar HA/self-healing, **não** SLA de produção.
+- HTTP sem TLS (Q3-A).
 
-### RNF-03 — Destruibilidade
-- Tudo criado pelo lab deve ser removível com `terraform destroy` (+ limpeza de imagens ECR se necessário, documentada).
+### RNF-F2-03 — Segurança operacional (mínima, Security OFF)
+- Tráfego app via ALB; SG tasks restringe origem ao ALB.
+- `allowed_cidr` no ALB:80 documentado (risco se 0.0.0.0/0).
 
-### RNF-04 — State
-- Backend local; `.gitignore` para `*.tfstate*` / `.terraform/`; comentário sobre S3 no futuro.
+### RNF-F2-04 — Clareza didática
+- Explicar diferença: IP direto da task (Fase 1) vs DNS estável do ALB (Fase 2).
 
-### RNF-05 — Observabilidade mínima (Resiliency)
-- Logs da task no CloudWatch Logs (padrão ECS/Fargate).
-- Endpoint `/health` atende health check “shallow” (RESILIENCY-06 parcial; sem ALB — N/A integração com LB).
+## Resiliency (extension ON) — postura Fase 2
 
-## Fora de Escopo (confirmado)
-- Autoscaling / múltiplas tasks
-- Application Load Balancer
-- Pipeline de CI/CD (deploy manual: script + Terraform)
-- Domínio próprio / HTTPS/TLS
-- Alta disponibilidade / multi-AZ / multi-region
-- Backend remoto S3 (apenas comentário futuro)
-
-## Classificação de Workload (RESILIENCY-01 — preliminar)
-| Componente | Criticidade | Impacto se indisponível |
-|---|---|---|
-| API Hello World no Fargate | **Low** (estudo individual) | Apenas aprendizado; sem receita/usuários reais |
-| Infra Terraform | Low | Recriável via `terraform apply` |
-
-Dependências: ECR (imagem) → Task Definition → ECS Service/Task → ENI/IP público → cliente HTTP.
-
-## Extensions
-
-| Extension | Status | Notas para este lab |
-|---|---|---|
-| Security Baseline | Desabilitada | PoC/estudo |
-| Resiliency Baseline | Habilitada | Decisões abaixo; HA/ALB/autoscaling = N/A por escopo |
-| Property-Based Testing | Habilitada (full) | App mínima: documentar propriedades N/A ou testes triviais se aplicável |
-
-## Decisões Resiliency (esclarecimentos)
-
-| # | Tema | Decisão |
-|---|---|---|
-| 1 | RTO/RPO / DR | **Horas** — Backup & Restore / recriar com Terraform (RESILIENCY-02 / 11) |
-| 2 | Change management | Usar **processo formal da organização** (RESILIENCY-03). *Nome da ferramenta não informado — registrar no README quando conhecido* |
-| 3 | CI/CD | **Deploy manual** (`scripts/build-and-push.ps1` + `terraform apply`); CI/CD fora de escopo |
-| 4 | Rollback | `terraform destroy` + reapply / re-push da imagem boa |
-| 5 | Estilo de deploy | **Direct / in-place** |
-| 6 | Topologia | **Single-region, single-AZ** (sem HA) |
-| 7 | Testes de resiliência | **Propor abordagem mínima** no lab (ex.: validar `/` e `/health`; exercício destroy/recreate) |
-| 8 | Incidentes | Usar **processo existente da organização**. *Nome não informado — placeholder no README* |
-
-### Compliance Resiliency (para este lab)
-| Regra | Status |
+| Área | Postura do lab |
 |---|---|
-| RESILIENCY-01 | Compliant — criticidade Low |
-| RESILIENCY-02 / 11 | Compliant — RTO/RPO horas; recover via IaC recreate |
-| RESILIENCY-12 / 13 | N/A — sem dados persistentes; recover = reapply |
-| RESILIENCY-03 | Compliant com ressalva — processo org formal (ferramenta TBD no README) |
-| RESILIENCY-04 | Compliant no escopo — sem pipeline; rollback destroy/reapply; deploy direct |
-| RESILIENCY-05 | Parcial — CloudWatch Logs; dashboard/métricas avançadas N/A documentado |
-| RESILIENCY-06 | Parcial — `/health` shallow; integração LB N/A |
-| RESILIENCY-07–10 | N/A — sem HA, autoscaling, deps externas relevantes |
-| RESILIENCY-08 | Compliant com decisão D — single-AZ explícito (fora de multi-AZ) |
-| RESILIENCY-14 | Compliant — abordagem mínima proposta no README/lab |
-| RESILIENCY-15 | Compliant com ressalva — processo org (ferramenta TBD) |
+| HA | 2 AZs + 2 tasks + ALB/TG |
+| Self-healing | ECS Service + HC do TG (exercício obrigatório) |
+| RTO/RPO | Ainda estudo: recreate via TF/redeploy; não DR multi-região |
+| Change / incidentes | Placeholders org (Fase 1) |
+| CI/CD | Continua fora de escopo (deploy manual) |
 
-## Estrutura-alvo do repositório
+Várias práticas Well-Architected permanecem **N/A** ou “próximo passo” (multi-região, chaos formal, etc.).
 
-```text
-.
-├── app/                 # FastAPI, requirements, Dockerfile
-├── infra/               # Terraform (network, ecr, iam, ecs, variables, outputs, ...)
-├── scripts/             # build-and-push.ps1 (+ helpers de IP se necessário)
-├── ecs-fargate-alb-policy.json  # policy IAM de estudo (já existente)
-├── README.md            # AI-DLC breve + lab principal
-├── .aidlc-rule-details/
-├── .cursor/rules/
-└── aidlc-docs/
-```
+## Compliance de Extensions
 
-## Status da etapa
-Análise de Requisitos **pronta para aprovação** (perguntas 1–18 + esclarecimentos Resiliency 1–8).
+| Extension | Enabled | Notas |
+|---|---|---|
+| Security Baseline | No | Skip; SG mínimo didático apenas |
+| Resiliency Baseline | Yes | HA/ALB/self-healing; demais N/A/placeholder |
+| PBT | No | Skip |
+
+## Backlog de implementação (alto nível)
+1. Rede 2ª AZ + SGs ALB/tasks  
+2. ALB + TG + listener + HC `/health`  
+3. ECS Service desired=2 + `load_balancer`  
+4. Outputs `alb_dns_name`; README/script/roteiro self-healing  
+5. Policy IAM docs se necessário  
+6. Build and Test + exercício matar task  
+
+## Fora de escopo
+- Rewrite Flask, HTTPS/ACM, NAT Gateway, autoscaling avançado, multi-região, CI/CD, ALB path-based avançado
+
+## Próximo após aprovação
+Workflow Planning (User Stories: avaliar skip — mudança infra/ops, pouco persona de produto).
