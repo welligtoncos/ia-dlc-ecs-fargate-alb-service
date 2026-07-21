@@ -18,7 +18,7 @@ terraform {
 
 locals {
   # Prefixo fixo dos recursos (requisito do lab).
-  project_name = "hello-fargate"
+  project_name   = "hello-fargate"
   container_port = 8000
   image_tag      = "latest"
   fargate_cpu    = "256"

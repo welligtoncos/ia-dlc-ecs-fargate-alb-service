@@ -1,6 +1,5 @@
-# Outputs do lab.
-# IP público: o Terraform NÃO consulta a ENI no apply (count dinâmico quebra no 1º apply).
-# Use: .\scripts\build-and-push.ps1 -ResolvePublicIp  OU  o comando em public_ip_cli_fallback.
+# Outputs do lab — Fase 2 (HA + ALB).
+# Fluxo principal: alb_dns_name. IP da task permanece output oficial alternativo (Q5=B).
 
 output "aws_region" {
   description = "Região usada."
@@ -32,23 +31,38 @@ output "vpc_id" {
   value       = aws_vpc.lab.id
 }
 
-# Mantido como null de propósito: lookup de ENI com count depende de IDs só conhecidos
-# depois do apply e falha no plan. O script PowerShell resolve o IP via AWS CLI.
+output "alb_dns_name" {
+  description = "DNS do Application Load Balancer (curl http://<dns>/ e /health)."
+  value       = aws_lb.app.dns_name
+}
+
+output "alb_arn" {
+  description = "ARN do ALB."
+  value       = aws_lb.app.arn
+}
+
+output "target_group_arn" {
+  description = "ARN do Target Group."
+  value       = aws_lb_target_group.app.arn
+}
+
+output "alb_url" {
+  description = "URL HTTP base do lab via ALB."
+  value       = "http://${aws_lb.app.dns_name}"
+}
+
+# Lookup de ENI no apply quebra o plan — IP via CLI/script (oficial alternativo ao ALB).
 output "public_ip" {
-  description = "Sempre null no Terraform deste lab. Resolva com -ResolvePublicIp ou public_ip_cli_fallback."
+  description = "Sempre null no Terraform. Use public_ip_cli_fallback ou -ResolvePublicIp (caminho oficial alternativo ao ALB)."
   value       = null
 }
 
 output "public_ip_cli_fallback" {
-  description = "Passos AWS CLI para obter o IP público da task RUNNING."
+  description = "Passos AWS CLI para obter IP público de uma task RUNNING (oficial alternativo)."
   value       = <<-EOT
-    # 1) Task RUNNING:
     aws ecs list-tasks --cluster ${aws_ecs_cluster.lab.name} --service-name ${aws_ecs_service.app.name} --desired-status RUNNING --region ${var.aws_region} --query "taskArns[0]" --output text
-    # 2) ENI da task:
-    # aws ecs describe-tasks --cluster ${aws_ecs_cluster.lab.name} --tasks <TASK_ARN> --region ${var.aws_region} --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value | [0]" --output text
-    # 3) IP público:
-    # aws ec2 describe-network-interfaces --network-interface-ids <ENI_ID> --region ${var.aws_region} --query "NetworkInterfaces[0].Association.PublicIp" --output text
-    # Preferível: .\scripts\build-and-push.ps1 -ResolvePublicIp
+    # Depois: describe-tasks → ENI → describe-network-interfaces → Association.PublicIp
+    # Ou: .\scripts\build-and-push.ps1 -ResolvePublicIp
   EOT
 }
 

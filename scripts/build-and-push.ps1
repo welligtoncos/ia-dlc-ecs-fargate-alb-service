@@ -1,17 +1,19 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Login ECR, build da imagem FastAPI, push e force-new-deployment no ECS.
+  Login ECR, build da imagem FastAPI, push e force-new-deployment no ECS (lab HA + ALB).
 
 .DESCRIPTION
-  Caminho oficial do lab hello-fargate (não usa terraform local-exec).
-  Lê outputs do Terraform em ./infra e faz build com contexto ./app.
+  Caminho oficial do lab hello-fargate Fase 2.
+  Lê outputs do Terraform em ./infra, faz build com contexto ./app,
+  e sempre imprime o DNS do ALB para validação HTTP (porta 80).
+  -ResolvePublicIp: caminho oficial alternativo (IP da task :8000).
 
 .PARAMETER AwsProfile
   Nome do perfil AWS CLI/SSO (opcional). Se omitido, usa o default do ambiente.
 
 .PARAMETER ResolvePublicIp
-  Após o redeploy, tenta obter o IP público e imprime exemplos de curl.
+  Após o redeploy, tenta obter o IP público de uma task e imprime curls :8000 (alternativo ao ALB).
 
 .EXAMPLE
   .\scripts\build-and-push.ps1
@@ -110,10 +112,24 @@ Invoke-Aws @(
 ) | Out-Null
 
 Write-Host "OK: imagem publicada e redeploy solicitado." -ForegroundColor Green
-Write-Host "Aguarde a task ficar RUNNING (pode levar 1–2 min) antes do curl."
+Write-Host "Aguarde as tasks ficarem RUNNING e o Target Group healthy (1–2 min) antes do curl."
+
+# Fluxo principal Fase 2: DNS do ALB (HTTP :80)
+Write-Host "==> DNS do Application Load Balancer..." -ForegroundColor Cyan
+$AlbDns = Get-TfOutputRaw "alb_dns_name"
+if ([string]::IsNullOrWhiteSpace($AlbDns) -or $AlbDns -match "null|None") {
+    throw "Output alb_dns_name vazio. Confirme 'terraform apply' (Fase 2 com ALB) em infra/."
+}
+Write-Host "ALB DNS: $AlbDns" -ForegroundColor Green
+Write-Host ""
+Write-Host "Validação (fluxo principal — porta 80, sem :8000):"
+Write-Host "  curl http://${AlbDns}/"
+Write-Host "  curl http://${AlbDns}/health"
+Write-Host ""
+Write-Host "Ou: terraform -chdir=infra output -raw alb_dns_name"
 
 if ($ResolvePublicIp) {
-    Write-Host "==> Resolvendo IP público..." -ForegroundColor Cyan
+    Write-Host "==> Resolvendo IP público (caminho oficial alternativo)..." -ForegroundColor Cyan
     $publicIp = $null
     try {
         $tfIp = & terraform "-chdir=$InfraDir" output -raw public_ip 2>$null
@@ -122,7 +138,7 @@ if ($ResolvePublicIp) {
         }
     }
     catch {
-        # IP do output TF pode estar vazio no 1º apply — fallback CLI abaixo
+        # IP do output TF pode estar vazio — fallback CLI abaixo
     }
 
     if (-not $publicIp) {
@@ -153,14 +169,13 @@ if ($ResolvePublicIp) {
     }
 
     if ($publicIp) {
-        Write-Host "IP público: $publicIp" -ForegroundColor Green
-        Write-Host ""
-        Write-Host "Validação:"
+        Write-Host "IP público (alternativo): $publicIp" -ForegroundColor Green
+        Write-Host "Nota: SG da task só aceita :8000 a partir do ALB — curl direto no IP pode falhar. Prefira o DNS do ALB."
         Write-Host "  curl http://${publicIp}:8000/"
         Write-Host "  curl http://${publicIp}:8000/health"
     }
     else {
-        Write-Host "Não foi possível obter o IP agora. Aguarde a task RUNNING e rode de novo com -ResolvePublicIp," -ForegroundColor Yellow
-        Write-Host "ou: terraform -chdir=infra output public_ip / public_ip_cli_fallback"
+        Write-Host "Não foi possível obter o IP agora. Aguarde tasks RUNNING e rode de novo com -ResolvePublicIp," -ForegroundColor Yellow
+        Write-Host "ou: terraform -chdir=infra output public_ip_cli_fallback"
     }
 }

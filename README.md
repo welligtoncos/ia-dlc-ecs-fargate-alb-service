@@ -1,8 +1,10 @@
-# Lab Hello World — FastAPI no Amazon ECS Fargate
+# Lab Hello World — FastAPI no ECS Fargate + ALB (HA didática)
 
-Projeto didático: container FastAPI → Amazon ECR → ECS Fargate (IP público, sem ALB), infraestrutura 100% Terraform.
+Projeto didático (**Fase 2**): container FastAPI → Amazon ECR → ECS Fargate (**2 tasks / 2 AZs**) atrás de um **Application Load Balancer** público. Infraestrutura 100% Terraform. App FastAPI **intacta** (`/` e `/health`).
 
-**Critério de sucesso:** `terraform apply` → push da imagem → `curl` em `/` e `/health` → `terraform destroy`.
+**Critério de sucesso:** `terraform apply` → push da imagem → `curl` no **DNS do ALB** em `/` e `/health` → exercício self-healing → `terraform destroy`.
+
+**Custo:** ALB + 2× Fargate (256/512) geram cobrança enquanto existirem. **Destroy ao final é obrigatório.**
 
 ---
 
@@ -15,190 +17,115 @@ Na **raiz do repositório**, com Docker Desktop ligado e policy IAM ok:
 aws sso login
 # ou: aws sso login --profile SEU_PERFIL
 
-# 2) Infra
+# 2) Infra (Fase 2: 2 AZs + ALB + desired=2)
+# Se você já tinha a Fase 1 aplicada: revise o plan — pode haver replace de subnet/SG.
 terraform -chdir=infra init
+terraform -chdir=infra plan
 terraform -chdir=infra apply
 
-# 3) Imagem + redeploy (+ tenta imprimir o IP)
-.\scripts\build-and-push.ps1 -ResolvePublicIp
-# ou: .\scripts\build-and-push.ps1 -AwsProfile SEU_PERFIL -ResolvePublicIp
+# 3) Imagem + redeploy (imprime DNS do ALB)
+.\scripts\build-and-push.ps1
+# ou: .\scripts\build-and-push.ps1 -AwsProfile SEU_PERFIL
 
-# 4) Testar (use o IP impresso pelo script; NÃO use output -raw public_ip — fica null neste lab)
-curl http://<IP>:8000/
-curl http://<IP>:8000/health
+# 4) Testar via ALB (porta 80 — SEM :8000)
+curl http://<ALB-DNS>/
+curl http://<ALB-DNS>/health
 # Esperado: Hello World  e  {"status":"ok","service":"hello-fargate"}
 
-# 5) Desligar (obrigatório — custo ~zero)
+# 5) Self-healing (opcional, didático) — ver seção abaixo
+
+# 6) Desligar (obrigatório)
 terraform -chdir=infra destroy
 ```
 
-Se o script não imprimir IP, aguarde 1–2 min (task RUNNING) e rode de novo só a resolução:
+DNS do ALB (se o script já rodou):
 
 ```powershell
-.\scripts\build-and-push.ps1 -ResolvePublicIp
-# ou veja: terraform -chdir=infra output public_ip_cli_fallback
+terraform -chdir=infra output -raw alb_dns_name
 ```
 
-**Apply ok (exemplo):** ao final você deve ver outputs como `ecr_repository_url`, `ecs_cluster_name=hello-fargate`, `vpc_id=vpc-...`. A task só responde no `curl` **depois** do passo 3 (imagem no ECR).
+**Caminho oficial alternativo (IP da task):** `.\scripts\build-and-push.ps1 -ResolvePublicIp` — útil para estudar ENI; o SG da task só libera **8000 a partir do ALB**, então curl direto no IP pode falhar. Prefira o DNS.
+
+**Apply ok:** outputs incluem `alb_dns_name`, `alb_url`, `ecs_cluster_name=hello-fargate`, `vpc_id`. As tasks só respondem no ALB **depois** do passo 3 (imagem no ECR) e targets healthy.
+
+---
+
+## Arquitetura (visão rápida)
+
+```text
+Internet
+   |
+   v
+ ALB :80  (2 AZs)  -->  Target Group (ip:8000, HC GET /health)
+                           |
+              +------------+------------+
+              |                         |
+         Task A (AZ-a)            Task B (AZ-b)
+         FastAPI :8000            FastAPI :8000
+         (IP público p/ ECR/logs; tráfego HTTP via ALB)
+```
+
+**Fora deste lab (de propósito):** HTTPS/ACM, NAT Gateway, autoscaling, multi-região, CI/CD.
+
+---
+
+## Exercício self-healing (didático)
+
+Com o lab no ar (`curl` no ALB OK) e `desired_count=2`:
+
+```powershell
+$cluster = "hello-fargate"
+$service = "hello-fargate"
+$region  = "us-east-1"
+
+# 1) Listar tasks RUNNING
+aws ecs list-tasks --cluster $cluster --service-name $service --desired-status RUNNING --region $region
+
+# 2) Escolher UMA task ARN e pará-la
+aws ecs stop-task --cluster $cluster --task <TASK-ARN> --region $region
+
+# 3) Observar o service recriar até runningCount=2
+aws ecs describe-services --cluster $cluster --services $service --region $region `
+  --query "services[0].{desired:desiredCount,running:runningCount,pending:pendingCount}"
+```
+
+**No console (us-east-1):**
+- **ECS** → cluster `hello-fargate` → Service → Tasks: uma some e outra nasce
+- **EC2** → Target Groups → `hello-fargate-tg` → Targets: unhealthy breve, depois healthy de novo
+- **ALB**: `curl http://<ALB-DNS>/health` deve voltar a responder (pode haver falha curta durante o replace)
+
+Isso demonstra self-healing do **ECS Service + health check do TG** — não é HA multi-região de produção.
 
 ---
 
 ## Guia de aprendizado no console AWS
 
-Use esta seção **com o lab já no ar** (`apply` + `build-and-push` + `curl` OK). Região: **us-east-1**.
+Use com o lab no ar. Região: **us-east-1**.
 
-Objetivo: entender **por que** cada botão do console existe — não só “achar o recurso”.
+### O que você montou
 
-### A história em uma frase
+Imagem no **ECR**, **2 tasks Fargate** em **2 subnets públicas**, **ALB** recebendo HTTP :80, **TG** checando `/health` na porta 8000, SG da task só aceitando tráfego do SG do ALB.
 
-Você empacotou a API em uma **imagem Docker**, guardou no **ECR**, pediu ao **ECS/Fargate** para rodar **1 container** dentro de uma **VPC pública**, liberou a porta **8000** no **Security Group**, e leu o resultado com **curl** (e os logs no **CloudWatch**).
+### Lições-chave
 
-```text
-  [Seu PC]
-     |  docker build + push (script)
-     v
-  [ECR]  imagem hello-fargate:latest
-     |  ECS puxa a imagem
-     v
-  [Task Fargate]  = container com FastAPI na porta 8000
-     |  vive dentro de
-     v
-  [VPC → Subnet pública → IGW]  +  [Security Group :8000]
-     |
-     +--> Internet --> curl http://IP:8000/
-     +--> CloudWatch Logs  (o que o uvicorn escreveu)
-```
-
-**Analogia rápida**
-
-| Peça AWS | Analogia |
-|---|---|
-| ECR | Prateleira de caixas (imagens) no depósito |
-| Task definition | Receita impressa: “abra esta caixa, use 0,25 vCPU, porta 8000…” |
-| Cluster | Galpão onde as máquinas virtuais do Fargate trabalham |
-| Service | Chefe de turno: “quero sempre 1 caixa aberta; se fechar, abre outra” |
-| Task | A caixa **aberta agora** (processo rodando) |
-| VPC / subnet / IGW | Condomínio + rua + portão para a avenida (internet) |
-| Security Group | Porteiro: só deixa entrar quem bate na porta 8000 |
-| Execution role | Crachá do **operário** que busca a caixa no depósito e anexa o relatório de logs |
-| Task role | Crachá do **app** (neste lab quase não usa) |
-| CloudWatch Logs | Caderno de bordo do container |
-
-**Fora deste lab (de propósito):** ALB, HTTPS, várias AZs, autoscaling. Aqui o navegador/curl fala **direto** com o IP da task.
-
----
-
-### Lição 1 — ECR (a imagem)
-
-**Console:** Amazon ECR → Repositories → `hello-fargate`
-
-**O que aprender:** a AWS não “compila” seu Python. Ela **baixa uma imagem** pronta. Se não houver tag `latest`, a task falha ao puxar (ImagePull).
-
-**Olhe:** Images → tag `latest` → digest (igual ao do `docker push`).
-
-**Pergunta:** se eu mudar só o código Python e **não** rodar o script de push, o que a task em produção continua rodando? → A imagem antiga no ECR.
-
----
-
-### Lição 2 — Task definition (a receita)
-
-**Console:** ECS → Task definitions → `hello-fargate`
-
-**O que aprender:** é o **contrato** do container: qual imagem, CPU (`256`), memória (`512`), porta (`8000`), roles IAM e para onde vão os logs.
-
-**Olhe:** container `hello-fargate` → Image URI do ECR; Log configuration → grupo `/ecs/hello-fargate`.
-
-**Pergunta:** cluster e service mudam a receita? → Não. Eles **usam** uma revisão da task definition.
-
----
-
-### Lição 3 — Cluster, Service e Task (quem manda no container)
-
-**Console:** ECS → Clusters → `hello-fargate`
-
-1. **Cluster** — só o “lugar”. Sozinho não serve Hello World.
-2. **Services** → `hello-fargate` — `Desired tasks = 1`. É quem **mantém** a quantidade. O script chama `force-new-deployment` para o service **recriar** a task com a imagem nova.
-3. **Tasks** — abra a task **RUNNING**:
-   - Status = container vivo
-   - **Configuration / Networking** = Public IP (o do seu `curl`)
-   - **Logs** = atalho para CloudWatch
-
-**Pergunta:** qual diferença entre Service e Task? → Service = desejo contínuo; Task = execução atual (pode ser substituída).
-
----
-
-### Lição 4 — VPC, subnet, IGW e rota (como o IP chega em você)
-
-**Console:** VPC
-
-| Onde | Nome | Ideia |
+| Lição | O que olhar | Por quê |
 |---|---|---|
-| Your VPCs | `hello-fargate-vpc` | Rede privada do lab (`10.0.0.0/16`) |
-| Subnets | `hello-fargate-public-subnet` | Pedacinho em **1 AZ**; task mora aqui |
-| Internet gateways | `hello-fargate-igw` | “Portão” VPC ↔ internet |
-| Route tables | `hello-fargate-public-rt` | Rota `0.0.0.0/0` → IGW (subnet pública de verdade) |
+| 2 AZs | VPC → Subnets `hello-fargate-public-subnet-a/b` | ALB exige ≥2 AZs; tasks distribuídas |
+| ALB | EC2 → Load Balancers → `hello-fargate-alb` | Ponto único de DNS para o lab |
+| Target Group | TG → Health checks path `/health` | Só targets healthy recebem tráfego |
+| SG em camadas | SG alb (80 do `allowed_cidr`) → SG task (8000 só do alb) | Tasks não ficam abertas na internet na :8000 |
+| Service desired=2 | ECS Service desired/running | Base do exercício self-healing |
+| Logs | CloudWatch `/ecs/hello-fargate` | Debug se target unhealthy |
 
-**O que aprender:** `assign_public_ip = true` **não basta** sem IGW + rota. Sem isso, o `curl` da sua máquina não chega na task.
-
-**Pergunta:** por que 1 AZ só? → Lab barato e simples; produção costuma usar várias AZs + ALB.
-
----
-
-### Lição 5 — Security Group (o porteiro)
-
-**Console:** EC2 → Security Groups → `hello-fargate-task-sg`
-
-**O que aprender:** mesmo com IP público, sem regra **Inbound TCP 8000** o `curl` dá timeout.
-
-**Olhe:** Inbound = 8000; Outbound = amplo (precisa sair para ECR e CloudWatch).
-
-**Pergunta:** abrir `0.0.0.0/0` na 8000 é ok? → Só em lab. Em estudo sério, restrinja ao seu IP (`allowed_cidr`).
+**Pergunta:** por que o curl no ALB não usa `:8000`? → Listener do ALB é **:80**; o ALB fala com as tasks na **8000**.
 
 ---
 
-### Lição 6 — IAM (dois crachás diferentes)
-
-**Console:** IAM → Roles
-
-| Role | Quem usa? | Para quê? |
-|---|---|---|
-| `hello-fargate-execution-role` | Agente do ECS (antes/durante o start) | Baixar imagem no ECR + criar streams de log |
-| `hello-fargate-task-role` | Código **dentro** do container | Chamar APIs AWS (S3, etc.). Hello World quase não precisa |
-
-**Pergunta:** se faltar a execution role, o sintoma típico é? → Task não puxa imagem ou não escreve logs.
-
----
-
-### Lição 7 — CloudWatch Logs (quando o curl falha)
-
-**Console:** CloudWatch → Log groups → `/ecs/hello-fargate`
-
-**O que aprender:** se a task está STOPPED ou o `curl` falha, o log mostra se o uvicorn subiu, se a imagem errou, etc.
-
-**Olhe:** stream mais recente → linhas do Uvicorn (“Application startup complete”).
-
----
-
-### Roteiro sugerido (15–20 min no console)
-
-Siga nesta ordem — acompanha o fluxo real do request:
-
-1. ECR → confirme `latest` (origem da app).
-2. Task definition → leia image, CPU, porta, log group (receita).
-3. Cluster → Service → Desired/Running = 1 (chefe de turno).
-4. Task RUNNING → anote Public IP → abra Logs (instância viva).
-5. No navegador: `http://<IP>:8000/` e `/health` (mesmo resultado do curl).
-6. VPC → subnet → IGW → route table (caminho de rede).
-7. Security Group → regra 8000 (porteiro).
-8. IAM → as duas roles (crachás).
-9. Quando terminar o estudo: `terraform -chdir=infra destroy` e confira se os recursos sumiram.
-
-### CLI (atalhos, mesma ideia)
+## Validar na AWS (CLI rápido)
 
 ```powershell
-aws sts get-caller-identity
 terraform -chdir=infra output
-aws ecr describe-images --repository-name hello-fargate --region us-east-1
+aws elbv2 describe-target-health --target-group-arn $(terraform -chdir=infra output -raw target_group_arn) --region us-east-1
 aws ecs describe-services --cluster hello-fargate --services hello-fargate --region us-east-1 --query "services[0].{status:status,running:runningCount,desired:desiredCount}"
 aws ecs list-tasks --cluster hello-fargate --service-name hello-fargate --desired-status RUNNING --region us-east-1
 aws logs tail /ecs/hello-fargate --since 10m --region us-east-1
@@ -210,84 +137,50 @@ aws logs tail /ecs/hello-fargate --since 10m --region us-east-1
 
 | Ferramenta | Uso |
 |---|---|
-| **AWS CLI v2** + perfil **SSO** | Auth, ECR, ECS, EC2 (IP) |
+| **AWS CLI v2** + perfil **SSO** | Auth, ECR, ECS, ELB, EC2 |
 | **Docker** Desktop/Engine | `docker build` / `push` |
 | **Terraform** CLI | `apply` / `destroy` / `output` |
 | **PowerShell** | Script oficial de build/push |
-| Conta AWS com permissões | Ver policy de estudo em `docs/` |
-
-Opcional: Cursor + AI-DLC já configurados neste repo (seção breve no final).
+| Conta AWS com permissões | Policy de estudo em `docs/` (inclui ELB) |
 
 ---
 
 ## Validação local (sem AWS)
 
-Faça estes passos **antes** do `terraform apply` para validar a API e a imagem Docker na sua máquina.
-
 ### App com Python (pytest + uvicorn)
-
-Na **raiz do repositório**:
 
 ```powershell
 pip install -r app\requirements.txt
 pytest -q
 ```
 
-Esperado: `2 passed` (`/` e `/health`).
-
-Rodar a API localmente:
+Esperado: `2 passed`.
 
 ```powershell
 cd app
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Em outro terminal:
-
 ```powershell
 curl http://127.0.0.1:8000/
 curl http://127.0.0.1:8000/health
 ```
 
-Esperado: `Hello World` e `{"status":"ok","service":"hello-fargate"}`.
-
 ### App com Docker
-
-Na **raiz do repositório** (contexto `./app` — não rode `./app` se você já estiver dentro de `app\`):
 
 ```powershell
 docker build -t hello-fargate:local ./app
 docker run --rm -p 8000:8000 hello-fargate:local
 ```
 
-Se você já estiver em `app\`:
-
-```powershell
-docker build -t hello-fargate:local .
-docker run --rm -p 8000:8000 hello-fargate:local
-```
-
-Em outro terminal:
-
 ```powershell
 curl http://127.0.0.1:8000/
 curl http://127.0.0.1:8000/health
 ```
 
-Se a porta **8000** estiver ocupada (ex.: uvicorn ainda rodando), use outra porta no host:
-
-```powershell
-docker run --rm -p 8001:8000 hello-fargate:local
-curl http://127.0.0.1:8001/
-```
-
-Para parar o container: `Ctrl+C` no terminal do `docker run`, ou `docker stop <CONTAINER_ID>`.
-
 ---
 
 ## 1) Autenticar (SSO)
-
-Ver **Fluxo completo na AWS** (passo 1). Resumo:
 
 ```powershell
 aws sso login
@@ -302,18 +195,21 @@ Região do lab: **us-east-1**.
 
 ```powershell
 terraform -chdir=infra init
+terraform -chdir=infra plan    # revise replaces se vinha da Fase 1
 terraform -chdir=infra apply
 ```
 
-O que sobe (resumo): VPC 1 AZ, subnet pública, SG na porta **8000**, ECR `hello-fargate`, cluster/service Fargate 256/512, CloudWatch Logs, **sem ALB**, **sem autoscaling**.
+O que sobe (resumo): VPC **2 AZs**, 2 subnets públicas, SG alb + SG task, **ALB** + listener :80 + TG (HC `/health`), ECR `hello-fargate`, cluster/service Fargate **desired=2**, CloudWatch Logs. **Sem autoscaling. Sem HTTPS.**
 
-**State:** local (`.tfstate` no `.gitignore`). Comentário nos `.tf` sobre migração futura para S3.
+**Migração Fase 1 → 2:** apply in-place pode **destruir/recriar** subnet/SG. Leia o `plan` com atenção. Alternativa: `destroy` completo e `apply` limpo.
 
-**Ordem importante:** no primeiro `apply`, o service pode falhar/restartar até existir imagem no ECR. Isso é esperado — em seguida rode o script de push e o force-new-deployment (o script já faz o force).
+**State:** local (`.tfstate` no `.gitignore`).
+
+**Ordem:** no 1º apply as tasks podem falhar até existir imagem `:latest` no ECR — rode o script em seguida.
 
 ### Risco de rede (estudo)
 
-A variável `allowed_cidr` default é `0.0.0.0/0` (porta 8000 aberta). Use só em lab; restrinja ao seu IP quando possível:
+`allowed_cidr` default `0.0.0.0/0` libera **HTTP :80 no ALB**. Lab apenas; restrinja ao seu IP quando possível:
 
 ```powershell
 terraform -chdir=infra apply -var="allowed_cidr=SEU.IP.PUBLICO/32"
@@ -324,50 +220,44 @@ terraform -chdir=infra apply -var="allowed_cidr=SEU.IP.PUBLICO/32"
 ## 3) Build, push e redeploy
 
 ```powershell
-.\scripts\build-and-push.ps1 -ResolvePublicIp
-# ou: .\scripts\build-and-push.ps1 -AwsProfile SEU_PERFIL -ResolvePublicIp
+.\scripts\build-and-push.ps1
+# ou: .\scripts\build-and-push.ps1 -AwsProfile SEU_PERFIL
 ```
 
 O script:
 
-1. Lê `terraform output` em `./infra` (`ecr_repository_url`, cluster, service, região)
-2. Faz login no ECR
-3. `docker build` com contexto `./app` e tag `:latest`
-4. `docker push`
-5. `aws ecs update-service --force-new-deployment`
-6. Com `-ResolvePublicIp`, tenta imprimir o IP + exemplos de `curl`
+1. Lê outputs Terraform (`ecr_repository_url`, cluster, service, região)
+2. Login ECR → `docker build ./app` → push `:latest`
+3. `ecs update-service --force-new-deployment`
+4. **Sempre** imprime `alb_dns_name` + exemplos de curl
+5. Com `-ResolvePublicIp`, tenta IP da task (alternativo)
 
 ---
 
-## 4) Validar HTTP
-
-Use o IP impresso pelo script (`-ResolvePublicIp`). O output `public_ip` do Terraform fica **null** neste lab.
+## 4) Validar HTTP (ALB)
 
 ```powershell
-curl http://<IP>:8000/
-curl http://<IP>:8000/health
+curl http://<ALB-DNS>/
+curl http://<ALB-DNS>/health
 ```
 
-Para validar recursos no console/CLI, veja **Validar na AWS** acima.
+Sem `:8000` no host do ALB.
 
 ---
 
 ## 5) Destruir (checklist obrigatório)
 
-Marque após validar:
-
-- [ ] `curl` `/` e `/health` OK
-- [ ] Entendi o caminho imagem → ECR → task → IP
+- [ ] `curl` no ALB `/` e `/health` OK
+- [ ] (Opcional) Exercício self-healing feito
+- [ ] Entendi: Internet → ALB → TG → 2 tasks
 - [ ] Rodei destroy:
 
 ```powershell
 terraform -chdir=infra destroy
 ```
 
-- [ ] Confirmei no console (ou CLI) que VPC/ECS/ECR do prefixo `hello-fargate` sumiram
-- [ ] Se restarem imagens órfãs no ECR, apague-as manualmente se o destroy não limpou o repositório conforme esperado
-
-**Exercício de resiliência (mínimo):** depois de um destroy bem-sucedido, você pode `apply` + `build-and-push` de novo para “recriar” o lab (RTO na ordem de horas / recreate manual — alinhado ao escopo de estudo).
+- [ ] Confirmei no console que VPC/ALB/ECS/ECR do prefixo `hello-fargate` sumiram
+- [ ] Imagens órfãs no ECR: apague manualmente se necessário
 
 ---
 
@@ -375,19 +265,17 @@ terraform -chdir=infra destroy
 
 ```text
 .
-├── app/                 # FastAPI + Dockerfile
-├── infra/               # Terraform (rede, ECR, IAM, ECS, logs)
+├── app/                 # FastAPI + Dockerfile (intacta na Fase 2)
+├── infra/               # Terraform HA: network, alb, ecs, ecr, iam, logs
 ├── scripts/
 │   └── build-and-push.ps1
 ├── docs/
-│   └── ecs-fargate-alb-policy.json   # policy IAM de estudo (ALB NÃO é provisionado neste lab)
-├── tests/               # pytest da API
-├── aidlc-docs/          # artefatos do processo AI-DLC (não é código da app)
+│   └── ecs-fargate-alb-policy.json   # policy IAM de estudo (cobre ALB/ELB)
+├── tests/
+├── aidlc-docs/
 ├── .gitignore
 └── README.md
 ```
-
-Papel de cada bloco Terraform: comentários em português nos arquivos `infra/*.tf`.
 
 ---
 
@@ -395,12 +283,13 @@ Papel de cada bloco Terraform: comentários em português nos arquivos `infra/*.
 
 | Sintoma | Causa provável | Ação |
 |---|---|---|
-| Task não sobe / ImagePull | ECR sem imagem `:latest` | Rode `.\scripts\build-and-push.ps1` |
-| `public_ip` null / sem IP | Esperado no TF; task ainda subindo | Use `-ResolvePublicIp` após push; aguarde task RUNNING |
-| `AccessDenied` / SSO | Sessão expirada | `aws sso login` (+ `-AwsProfile` se usar) |
-| `ec2:CreateVpc` / `logs:ListTagsForResource` negado | Policy IAM incompleta no usuário | Atualize `docs/ecs-fargate-alb-policy.json` na conta (seção Policy IAM) e rode `apply` de novo |
-| `curl` timeout | SG/`allowed_cidr` ou IP antigo | Confira SG e IP atual da ENI |
-| Docker login ECR falha | Credencial ou região | Confira perfil, região `us-east-1`, permissões ECR |
+| Task não sobe / ImagePull | ECR sem `:latest` | `.\scripts\build-and-push.ps1` |
+| Target unhealthy | App/HC ou SG | Confira `/health` local; TG path `/health`; SG task←alb |
+| `curl` ALB timeout | SG alb / `allowed_cidr` / DNS errado | Output `alb_dns_name`; SG :80; aguarde healthy |
+| `alb_dns_name` falha no script | Apply sem ALB / state antigo | `terraform apply` Fase 2 |
+| Replace inesperado no plan | Migração Fase 1→2 | Leia plan; ou destroy+apply limpo |
+| `AccessDenied` | Policy IAM | Atualize `docs/ecs-fargate-alb-policy.json` na conta |
+| Curl no IP :8000 falha | Esperado (SG só do ALB) | Use DNS do ALB |
 
 ---
 
@@ -408,45 +297,17 @@ Papel de cada bloco Terraform: comentários em português nos arquivos `infra/*.
 
 Arquivo: [`docs/ecs-fargate-alb-policy.json`](docs/ecs-fargate-alb-policy.json).
 
-Serve para estudar permissões (inclui ações de ALB na policy de aprendizado). **Este lab não cria ALB** — só Fargate com IP público.
+Cobre o lab **com ALB** (ações `elasticloadbalancing:*` de create/describe/modify LB, TG, listener, register targets, etc.) além de VPC/ECS/ECR/logs.
 
-A policy precisa permitir **criar VPC** (`ec2:CreateVpc`, subnet, IGW, rotas…) e **tags de logs** (`logs:ListTagsForResource`). Sem isso o `terraform apply` falha com `AccessDenied` / `UnauthorizedOperation` (ex.: usuário `usuario-dados`).
-
-### Criar policy (primeira vez)
+### Criar / atualizar policy
 
 ```powershell
 aws iam create-policy --policy-name EcsFargateAlbLearning --policy-document file://docs/ecs-fargate-alb-policy.json
 ```
 
-Anexe ao usuário/role (ajuste o nome):
-
-```powershell
-$arn = aws iam list-policies --scope Local --query "Policies[?PolicyName=='EcsFargateAlbLearning'].Arn" --output text
-aws iam attach-user-policy --user-name usuario-dados --policy-arn $arn
-```
-
-### Atualizar policy já existente (versão nova)
-
 ```powershell
 $arn = aws iam list-policies --scope Local --query "Policies[?PolicyName=='EcsFargateAlbLearning'].Arn" --output text
 aws iam create-policy-version --policy-arn $arn --policy-document file://docs/ecs-fargate-alb-policy.json --set-as-default
-```
-
-(Admin da conta precisa rodar isso se o seu usuário não puder gerenciar IAM.)
-
-### Depois de corrigir permissões
-
-O apply anterior pode ter criado recursos parciais (ECR, cluster, roles, log group). Rode de novo:
-
-```powershell
-terraform -chdir=infra apply
-```
-
-Se preferir limpar e recomeçar:
-
-```powershell
-terraform -chdir=infra destroy
-terraform -chdir=infra apply
 ```
 
 ---
@@ -455,41 +316,25 @@ terraform -chdir=infra apply
 
 | Tema | Nota |
 |---|---|
-| Change management | Use o **processo formal da organização** (ferramenta TBD — preencher quando conhecido) |
-| Incidentes | Use o **processo existente da organização** (nome TBD) |
-| CI/CD | Fora de escopo — deploy **manual** (`terraform` + script) |
+| Change management | Processo formal da organização (TBD) |
+| Incidentes | Processo existente da organização (TBD) |
+| CI/CD | Fora de escopo — deploy manual |
 
 ---
 
 ## AI-DLC (breve)
 
-Este workspace já pode ter o **AI-DLC** configurado (`.cursor/rules/`, `.aidlc-rule-details/`). Artefatos do fluxo ficam em `aidlc-docs/`; código da aplicação fica na raiz (`app/`, `infra/`, `scripts/`).
+Artefatos do fluxo em `aidlc-docs/`; código em `app/`, `infra/`, `scripts/`. Regras: `.cursor/rules/`, `.aidlc-rule-details/`.
 
-Se precisar **instalar do zero** no Cursor (Windows/PowerShell), pacote em `%USERPROFILE%\Downloads\aidlc-rules`:
-
-```powershell
-New-Item -ItemType Directory -Force -Path ".cursor\rules" | Out-Null
-$frontmatter = @"
----
-description: "AI-DLC (AI-Driven Development Life Cycle) adaptive workflow for software development"
-alwaysApply: true
----
-
-"@
-$frontmatter | Out-File -FilePath ".cursor\rules\ai-dlc-workflow.mdc" -Encoding utf8
-Get-Content "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rules\core-workflow.md" |
-  Add-Content ".cursor\rules\ai-dlc-workflow.mdc"
-New-Item -ItemType Directory -Force -Path ".aidlc-rule-details"
-Copy-Item "$env:USERPROFILE\Downloads\aidlc-rules\aws-aidlc-rule-details\*" ".aidlc-rule-details\" -Recurse
-```
-
-Verifique: `Test-Path ".aidlc-rule-details\common\process-overview.md"`.
+Instalação do zero (Windows): pacote em `%USERPROFILE%\Downloads\aidlc-rules` — copie `core-workflow.md` para `.cursor/rules/ai-dlc-workflow.mdc` e os rule-details para `.aidlc-rule-details/`.
 
 ---
 
 ## Escopo fora deste lab
 
-- Application Load Balancer / HTTPS / multi-AZ / autoscaling
+- HTTPS / certificado ACM
+- NAT Gateway / tasks só privadas
+- Autoscaling / multi-região
 - Pipeline CI/CD
-- Backend remoto de state (S3) — só comentário de futuro
-- Security Baseline AI-DLC (desabilitada neste projeto)
+- Backend remoto de state (S3)
+- Security Baseline AI-DLC (OFF neste projeto)

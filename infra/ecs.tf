@@ -1,7 +1,6 @@
-# ECS Cluster + Task Definition + Service (Fargate).
-# Por quê Service com desired_count=1: mantém uma task; sem ALB e sem autoscaling.
-# Dependency gap: no primeiro apply a imagem :latest pode ainda não existir no ECR.
-# O apply NÃO espera steady state — depois rode o script de build/push + force deployment.
+# ECS Cluster + Task Definition + Service (Fargate) — Fase 2 HA.
+# desired_count=2 + load_balancer no TG; tasks nas 2 subnets públicas.
+# Gap: no 1º apply a imagem :latest pode não existir — wait_for_steady_state=false.
 
 resource "aws_ecs_cluster" "lab" {
   name = local.project_name
@@ -57,23 +56,28 @@ resource "aws_ecs_service" "app" {
   name            = local.project_name
   cluster         = aws_ecs_cluster.lab.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
+  desired_count   = 2
   launch_type     = "FARGATE"
 
-  # Não bloquear o apply se a task ainda não ficar saudável (imagem ausente).
+  # Defaults de rolling: maximumPercent=200, minimumHealthyPercent=100
   wait_for_steady_state = false
 
   network_configuration {
-    subnets          = [aws_subnet.public.id]
+    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups  = [aws_security_group.task.id]
     assign_public_ip = true
   }
 
-  # Sem load_balancer { } — acesso direto via IP público da ENI.
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = local.project_name
+    container_port   = local.container_port
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.execution_ecr_logs,
     aws_cloudwatch_log_group.app,
+    aws_lb_listener.http,
   ]
 
   tags = {

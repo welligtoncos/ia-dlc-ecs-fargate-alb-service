@@ -1,26 +1,12 @@
-# Performance Test Instructions — Lab Hello Fargate
+# Performance Test Instructions — Fase 2
 
-## Purpose
-Lab didático Hello World — **sem requisitos de carga/produção**.
+## Status
+**N/A** — lab didático Hello World + HA mínima.
 
-## Performance Requirements
-| Métrica | Expectativa do lab |
-|---|---|
-| Response time | Aceitável em curl manual (segundos) |
-| Throughput / concurrent users | N/A |
-| Error rate sob stress | N/A |
+## Fora de escopo
+- Load / stress tests
+- SLO de latência ou throughput
+- Autoscaling sob carga
 
-## Run Performance Tests
-**N/A** — não executar JMeter/k6 neste escopo.
-
-## Smoke (opcional, local)
-Após `docker run` ou uvicorn:
-
-```powershell
-Measure-Command { curl http://127.0.0.1:8000/ }
-```
-
-Só para curiosidade didática; sem gate de SLO.
-
-## Resiliency (mínimo, alinhado à extensão)
-Documentado no README: curl `/` + `/health` e exercício destroy/recreate (RTO horas / recreate manual).
+## Observação
+`desired_count=2` é fixo. Validação de resiliência = exercício self-healing (integration Scenario 3), não benchmark.

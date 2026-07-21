@@ -1,61 +1,52 @@
-# Build Instructions — Lab Hello Fargate
+# Build Instructions — Fase 2 (HA + ALB)
 
 ## Prerequisites
-- **OS**: Windows + PowerShell (comandos abaixo)
-- **Python** 3.12+ (para pytest/uvicorn local)
-- **Docker** Desktop/Engine (imagem local e push ECR)
-- **Terraform** CLI + **AWS CLI v2** + SSO (fluxo AWS)
-- **Dependências Python**: `app/requirements.txt`
+- **AWS CLI v2** + SSO
+- **Docker** Desktop/Engine
+- **Terraform** CLI
+- **PowerShell** 5.1+
+- **Python** 3.x + pip (validação local / pytest)
+- Policy IAM de estudo aplicada (`docs/ecs-fargate-alb-policy.json`)
 
 ## Build Steps
 
-### 1. Instalar dependências da app (local)
-
-Na raiz do repositório:
-
+### 1. Dependências locais (app)
 ```powershell
 pip install -r app\requirements.txt
 ```
 
-### 2. Build da imagem Docker (local)
-
-```powershell
-# Na raiz do repo (contexto ./app)
-docker build -t hello-fargate:local ./app
-```
-
-Se estiver dentro de `app\`:
-
-```powershell
-docker build -t hello-fargate:local .
-```
-
-### 3. Build / provisionamento AWS (lab completo)
-
+### 2. Auth AWS
 ```powershell
 aws sso login
-terraform -chdir=infra init
-terraform -chdir=infra plan
-terraform -chdir=infra apply
-.\scripts\build-and-push.ps1
+# ou: aws sso login --profile SEU_PERFIL
 ```
 
-O script faz: login ECR → `docker build ./app` → push `:latest` → force-new-deployment.
+### 3. Infra (Terraform)
+```powershell
+terraform -chdir=infra init
+terraform -chdir=infra plan    # revise replaces se migrando da Fase 1
+terraform -chdir=infra apply
+```
 
-### 4. Verificar sucesso
+**Artefatos esperados:** VPC 2 AZs, ALB, TG, Service `desired_count=2`, outputs `alb_dns_name` / `alb_url`.
 
-| Artefato | Como verificar |
-|---|---|
-| Dependências Python | `pip show fastapi uvicorn pytest` |
-| Imagem local | `docker images hello-fargate:local` |
-| Infra | `terraform -chdir=infra output` |
-| Imagem no ECR | Console ECR ou `aws ecr describe-images` |
+### 4. Imagem + redeploy
+```powershell
+.\scripts\build-and-push.ps1
+# ou: .\scripts\build-and-push.ps1 -AwsProfile SEU_PERFIL
+```
+
+O script imprime o DNS do ALB e exemplos de curl.
+
+### 5. Verificar sucesso
+- Script termina sem erro
+- Output `alb_dns_name` não vazio: `terraform -chdir=infra output -raw alb_dns_name`
+- Após 1–2 min: targets healthy no TG
 
 ## Troubleshooting
-
-| Problema | Causa | Solução |
-|---|---|---|
-| `path "./app" not found` | Build rodado de dentro de `app\` | Use `./app` na raiz ou `.` em `app\` |
-| `terraform output` falha | Apply ainda não rodou | `terraform -chdir=infra apply` |
-| Docker login ECR | SSO expirado | `aws sso login` |
-| Task sem imagem | Push não feito | `.\scripts\build-and-push.ps1` |
+| Problema | Ação |
+|---|---|
+| ImagePull / task restart | Rode o script de push |
+| Plan com muitos destroys | Migração Fase 1→2; leia plan ou destroy+apply limpo |
+| AccessDenied | Atualize policy IAM na conta |
+| alb_dns_name falha | Confirme apply Fase 2 com `alb.tf` |
