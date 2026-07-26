@@ -1,9 +1,9 @@
 # Rastreamento de Estado AI-DLC
 
 ## Informações do Projeto
-- **Fase**: CONSTRUCTION
-- **Unidade**: (todas concluídas)
-- **Etapa Atual**: Build and Test — instruções Fase 2 geradas (aguardando aprovação)
+- **Fase**: OPERATIONS (placeholder) — **WORKFLOW FASE 2 COMPLETO**
+- **Unidade**: —
+- **Etapa Atual**: Encerrado
 
 ## Progresso — `hello-infra` (Fase 2)
 - [x] Functional Design (PULADO)
@@ -21,10 +21,13 @@
 
 ## Progresso — Construction (fechamento)
 - [x] Unidades ativas concluídas
-- [ ] Build and Test (gerado — aguardando aprovação)
-- [ ] Operations (PLACEHOLDER — após B&T)
+- [x] Build and Test (APROVADO)
+- [x] Operations (PLACEHOLDER — concluído)
 
 ## Extension Configuration
 - Security: OFF
 - Resiliency: ON
 - PBT: OFF
+
+## Resumo Fase 2
+Lab HA: ALB + 2 AZs + desired=2; app intacta; runbook self-healing; destroy obrigatório.
