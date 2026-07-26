@@ -76,6 +76,61 @@ IP público na task ainda existe (`assign_public_ip=true`) para a task puxar ima
 
 ---
 
+## Onde isso se usa na vida real (aplicações e situações)
+
+Este lab é Hello World, mas o **mesmo padrão** (container + ECR + ECS Fargate + Service + ALB) aparece em APIs e backends HTTP de verdade. Use a tabela abaixo para decidir **quando** cada peça faz sentido.
+
+### Tipos de aplicação que costumam ir para ECS Fargate + ALB
+
+| Tipo de aplicação | Exemplos | Por que encaixa |
+|---|---|---|
+| **API HTTP / REST / JSON** | FastAPI, Flask, Express, Nest, Spring Boot | Entrada HTTP estável no ALB; várias réplicas atrás do TG |
+| **BFF (Backend for Frontend)** | API que agrega microsserviços para o app web/mobile | Precisa DNS fixo, health check e redeploy sem mudar URL |
+| **Portal / API interna** | CRUD, autenticação, integrações | Service mantém N tasks; logs no CloudWatch |
+| **Webhook / callback** | Receber eventos de Stripe, GitHub, ERP | Endpoint público (ou via VPN) com URL estável |
+| **Worker HTTP leve** | Serviço que processa jobs sob demanda via HTTP | Fargate evita gerenciar EC2; escale com desired/autoscaling |
+| **Migração de VM → container** | App legado empacotado em Docker | Mesmo modelo de deploy (imagem → task) sem reescrever tudo |
+
+### Em quais situações usar cada padrão
+
+| Situação | O que usar | Por quê |
+|---|---|---|
+| Aprender o fluxo imagem → task → internet | **1 task** (ou Service desired=1), acesso direto / lab | Menos peças; foco em Task Definition e ECR |
+| API que **precisa ficar no ar** e se recuperar sozinha | **ECS Service** (`desired_count` ≥ 1) | Guardião: se a task morrer, sobe outra |
+| Vários clientes / DNS estável / não depender do IP da task | **ALB + Target Group** | IP da task muda; DNS do ALB não |
+| Distribuir carga e tirar instância doente do ar | **ALB + HC** (`/health`) + ≥2 tasks | Só target **healthy** recebe tráfego |
+| Sobreviver à queda de **uma AZ** (didático/produção básica) | **2 AZs** + desired ≥ 2 | Como neste lab |
+| Time pequeno, sem querer gerenciar servidores | **Fargate** (não EC2 launch type) | AWS cuida da capacidade |
+| Pico de tráfego previsível / sazonal | Service + **Application Auto Scaling** (fora deste lab) | Sobe/desce `desired_count` |
+| Job batch que roda e termina (ETL, relatório noturno) | ECS **Scheduled Task** / Step Functions — **não** ALB contínuo | Não precisa Service+ALB 24×7 |
+| Função curta, poucos ms, pouco estado | Avaliar **Lambda** (+ API Gateway) | Pode ser mais barato/simples que Fargate sempre ligado |
+| Só site estático | **S3 + CloudFront** | ECS seria exagero |
+| Precisa de GPU / kernel especial / custo EC2 otimizado | ECS no **EC2** ou outro serviço | Fargate tem limites e preço por vCPU/hora |
+
+### Quando **não** começar pelo padrão deste lab
+
+- Protótipo local: rode `uvicorn` / Docker na máquina (seção Validação local).
+- Um webhook raro e barato: às vezes Lambda basta.
+- App sem HTTP (só fila): considere workers com SQS + Service **sem** ALB, ou outros padrões.
+- Produção séria ainda exige o que este lab **não** tem: HTTPS, rede privada/NAT ou endpoints VPC, autoscaling, alarmes, CI/CD, WAF, etc.
+
+### Como ler este lab no mapa de decisão
+
+```text
+Tenho uma API em container?
+  não → empacote (Dockerfile) primeiro
+  sim → precisa ficar no ar sozinha?
+         não → task manual / lab desired=1
+         sim → ECS Service
+                precisa URL estável + várias réplicas?
+                  não → Service sem ALB (menos comum em API pública)
+                  sim → Service + ALB + health check  ← você está aqui (Fase 2)
+```
+
+**Resumo:** use o padrão deste repositório quando tiver (ou for aprender) uma **API HTTP em container** que precisa de **disponibilidade**, **DNS estável** e **mais de uma réplica**. Use só a Fase 1 mental (1 task) quando o objetivo for entender o fluxo básico, sem ainda se preocupar com balanceamento.
+
+---
+
 ## Arquitetura (Fase 2)
 
 ```text
